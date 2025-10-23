@@ -115,7 +115,25 @@ main {
   gap: 8px;
   margin-top: 10px;
 }
+/* ===== RESPONSIVE FIX ===== */
+@media (max-width: 600px) {
+  .form-section {
+    width: 95%;
+    padding: 0.5rem;
+  }
 
+  #addForm {
+    padding: 0.8rem;
+  }
+
+  .form-actions {
+    flex-direction: column;
+  }
+
+  .form-actions button {
+    width: 100%;
+  }
+}
 /* controls */
 .controls {
   display: flex;

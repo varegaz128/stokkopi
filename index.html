@@ -89,8 +89,6 @@
     <footer>
       <small>DISELL Coffee • Local demo (vanilla)</small>
     </footer>
-    <!-- Tombol scan -->
-    <button id="startScanBtn">📷 Scan Barcode</button>
 
     <!-- Popup kamera -->
     <div id="scanPopup" class="hidden popup-overlay">
@@ -100,6 +98,26 @@
         <div id="reader" class="camera-box"></div>
         <p id="scanResult"></p>
         <button id="stopScanBtn" class="stop-btn">Berhenti</button>
+      </div>
+    </div>
+    <!-- Popup Detail Produk -->
+    <div id="detailPopup" class="hidden popup">
+      <div class="popup-content">
+        <h3>Detail Produk</h3>
+        <p><b>Nama:</b> <span id="detailMenu"></span></p>
+        <p><b>Tanggal Produksi:</b> <span id="detailDate"></span></p>
+        <p><b>Stok Tersisa:</b> <span id="detailStock"></span></p>
+        <label>Jumlah Keluar:</label>
+        <input
+          type="number"
+          id="checkoutQty"
+          min="1"
+          placeholder="Masukkan jumlah keluar"
+        />
+        <div style="margin-top: 10px">
+          <button id="confirmCheckoutBtn">✅ Keluarkan</button>
+          <button id="cancelCheckoutBtn">❌ Batal</button>
+        </div>
       </div>
     </div>
 

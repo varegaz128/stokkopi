@@ -14,7 +14,6 @@ const downloadJsonBtn = document.getElementById("downloadJsonBtn");
 const uploadJsonInput = document.getElementById("uploadJsonInput");
 const resetDataBtn = document.getElementById("resetDataBtn");
 const printAllBtn = document.getElementById("printAllBtn");
-const downloadJsonAnchorId = "backup-productions";
 const scanPopup = document.getElementById("scanPopup");
 const closeScanBtn = document.getElementById("closeScanBtn");
 
@@ -27,7 +26,7 @@ document
   .getElementById("cancelAdd")
   ?.addEventListener("click", () => form.classList.add("hidden"));
 
-// === Add produk ===
+// === Tambah Produk ===
 form.addEventListener("submit", (e) => {
   e.preventDefault();
   const menu = menuSelect.value;
@@ -40,7 +39,6 @@ form.addEventListener("submit", (e) => {
   ).padStart(2, "0")}/${now.getFullYear()}`;
   const code = `${menu}-${today}`;
 
-  // ambil ulang dari localStorage agar sinkron
   productions = JSON.parse(localStorage.getItem("productions") || "[]");
 
   const existing = productions.find((p) => p.menu === menu && p.date === today);
@@ -54,13 +52,11 @@ form.addEventListener("submit", (e) => {
   form.classList.add("hidden");
 });
 
-// === Render produk (secure) ===
+// === Render produk ===
 function renderProducts() {
-  // baca ulang dari localStorage
   const raw = localStorage.getItem("productions");
   productions = raw ? JSON.parse(raw) : [];
 
-  // bersihkan data rusak tanpa langsung menimpa bila sama
   const valid = productions.filter(
     (p) => p.menu && p.date && Number(p.qty) > 0
   );
@@ -77,7 +73,6 @@ function renderProducts() {
     return;
   }
 
-  // kelompokkan berdasarkan menu
   const grouped = {};
   productions.forEach((p) => {
     if (!grouped[p.menu]) grouped[p.menu] = [];
@@ -98,7 +93,6 @@ function renderProducts() {
     `;
     productList.appendChild(div);
 
-    // buat QR default (menu saja)
     const barcodeEl = document.getElementById(`barcode-${menu}`);
     barcodeEl.innerHTML = "";
     new QRCode(barcodeEl, {
@@ -111,7 +105,6 @@ function renderProducts() {
     });
   });
 
-  // klik QR -> aktifkan print button
   document.querySelectorAll(".barcode-container").forEach((bc) => {
     bc.addEventListener("click", () => {
       document
@@ -121,18 +114,16 @@ function renderProducts() {
     });
   });
 
-  // print per menu
   document.querySelectorAll(".print-btn").forEach((btn) => {
     btn.addEventListener("click", (e) => printBarcode(e.target.dataset.menu));
   });
 
-  // expand tanggal
   document.querySelectorAll(".expand-btn").forEach((btn) => {
     btn.addEventListener("click", (e) => toggleTanggal(e.target.dataset.menu));
   });
 }
 
-// === Toggle tanggal (slide) ===
+// === Toggle tanggal ===
 function toggleTanggal(menu) {
   const info = document.getElementById(`info-${menu}`);
   if (!info) return;
@@ -148,40 +139,20 @@ function toggleTanggal(menu) {
           <div style="color:#666">Stok: ${p.qty}</div>
         </div>
         <div class="date-btns">
-          <button class="small" data-menu="${menu}" data-date="${p.date}" onclick="updateBarcode('${menu}','${p.date}')">Gunakan Barcode</button>
-          <button class="delete-btn small" data-menu="${menu}" data-date="${p.date}" onclick="deleteProduct('${menu}','${p.date}')">🗑️ Hapus</button>
+          <button class="small" onclick="updateBarcode('${menu}','${p.date}')">Gunakan Barcode</button>
+          <button class="delete-btn small" onclick="deleteProduct('${menu}','${p.date}')">🗑️ Hapus</button>
           <button class="small" onclick="printBarcode('${menu}','${p.date}')">🖨️ Print</button>
         </div>
-      </div>
-    `
+      </div>`
       )
       .join("");
     info.classList.remove("hidden");
-    info.style.maxHeight = info.scrollHeight + "px";
   } else {
-    info.style.maxHeight = "0";
-    setTimeout(() => info.classList.add("hidden"), 300);
+    info.classList.add("hidden");
   }
 }
 
-// === Update QR saat pilih tanggal ===
-function updateBarcode(menu, date) {
-  const el = document.getElementById(`barcode-${menu}`);
-  if (!el) return;
-  el.innerHTML = "";
-  new QRCode(el, {
-    text: `${menu}-${date}`,
-    width: 140,
-    height: 140,
-    colorDark: "#000",
-    colorLight: "#fff",
-    correctLevel: QRCode.CorrectLevel.H,
-  });
-  // activate print button
-  el.classList.add("active");
-}
-
-// === delete per tanggal ===
+// === Delete ===
 function deleteProduct(menu, date) {
   if (!confirm(`Hapus stok ${menu} (${date}) ?`)) return;
   productions = productions.filter(
@@ -191,168 +162,7 @@ function deleteProduct(menu, date) {
   renderProducts();
 }
 
-// === print single label (QR) ===
-function printBarcode(menu, date = "") {
-  const code = date ? `${menu}-${date}` : menu;
-  // buka popup print dengan layout label (logo teks + menu + tanggal + QR)
-  const w = window.open("", "_blank");
-  const labelHTML = `
-    <html><head><title>Print ${menu}</title>
-      <style>
-        body{font-family:sans-serif;text-align:center;padding:20px}
-        .label{display:inline-block;border:1px solid #ddd;padding:10px;border-radius:8px}
-        .logo{font-weight:800;color:${
-          getComputedStyle(document.documentElement).getPropertyValue(
-            "--accent"
-          ) || "#d12a08"
-        };font-size:18px}
-        .menu{font-size:16px;margin-top:8px}
-        .date{font-size:12px;color:#666;margin-bottom:8px}
-      </style>
-    </head><body>
-      <div class="label">
-        <div class="logo">DISELL COFFEE</div>
-        <div class="menu">${menu}</div>
-        ${date ? `<div class="date">${date}</div>` : ""}
-        <div id="qrcode"></div>
-      </div>
-      <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
-      <script>
-        new QRCode(document.getElementById('qrcode'), {
-          text: "${code}",
-          width: 200, height: 200, colorDark:'#000', colorLight:'#fff', correctLevel: QRCode.CorrectLevel.H
-        });
-        window.onload = ()=> { window.print(); window.onafterprint = ()=> window.close(); }
-      </script>
-    </body></html>
-  `;
-  w.document.write(labelHTML);
-  w.document.close();
-}
-
-// === Print ALL labels (one page multiple labels) ===
-printAllBtn.addEventListener("click", () => {
-  const w = window.open("", "_blank");
-  let inner = `<html><head><title>Print All</title><style>body{font-family:sans-serif;padding:10px} .grid{display:flex;flex-wrap:wrap;gap:10px}</style></head><body><div class="grid">`;
-  // produce each distinct menu + dates
-  productions.forEach((p) => {
-    inner += `<div class="label" data-code="${p.menu}-${
-      p.date
-    }" style="width:180px;padding:8px;border:1px solid #ddd;border-radius:8px;text-align:center">
-      <div style="font-weight:700">${p.menu}</div>
-      <div style="font-size:12px;color:#666">${p.date}</div>
-      <div class="q" id="q-${p.menu}-${p.date.replace(/\//g, "_")}"></div>
-    </div>`;
-  });
-  inner += `</div><script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script><script>
-    document.querySelectorAll('[data-code]').forEach(el => {
-      const code = el.getAttribute('data-code');
-      const id = el.querySelector('.q').id;
-      new QRCode(document.getElementById(id), { text: code, width:120, height:120 });
-    });
-    window.onload = ()=> { window.print(); window.onafterprint = ()=> window.close(); }
-  </script></body></html>`;
-  w.document.write(inner);
-  w.document.close();
-});
-
-// === Export XLSX using SheetJS ===
-exportExcelBtn.addEventListener("click", () => {
-  const data = productions.map((p) => ({
-    Menu: p.menu,
-    Stok: p.qty,
-    Tanggal: p.date,
-    Code: p.code,
-  }));
-  const ws = XLSX.utils.json_to_sheet(data);
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "Productions");
-  XLSX.writeFile(
-    wb,
-    `productions_${new Date().toISOString().slice(0, 10)}.xlsx`
-  );
-});
-
-// === Export PDF (render table of data) ===
-exportPdfBtn.addEventListener("click", async () => {
-  // buat elemen sementara
-  const container = document.createElement("div");
-  container.style.padding = "12px";
-  container.innerHTML = `<h3>Daftar Produksi</h3><table border="1" style="border-collapse:collapse;width:100%"><thead><tr><th>Menu</th><th>Stok</th><th>Tanggal</th><th>Code</th></tr></thead><tbody>${productions
-    .map(
-      (p) =>
-        `<tr><td>${p.menu}</td><td>${p.qty}</td><td>${p.date}</td><td>${p.code}</td></tr>`
-    )
-    .join("")}</tbody></table>`;
-  document.body.appendChild(container);
-  const canvas = await html2canvas(container, { scale: 2 });
-  const img = canvas.toDataURL("image/png");
-  const { jsPDF } = window.jspdf;
-  const pdf = new jsPDF({ orientation: "portrait" });
-  const w = pdf.internal.pageSize.getWidth();
-  const h = pdf.internal.pageSize.getHeight();
-  const imgProps = pdf.getImageProperties(img);
-  const ratio = Math.min(w / imgProps.width, h / imgProps.height);
-  pdf.addImage(
-    img,
-    "PNG",
-    0,
-    0,
-    imgProps.width * ratio,
-    imgProps.height * ratio
-  );
-  pdf.save(`productions_${new Date().toISOString().slice(0, 10)}.pdf`);
-  document.body.removeChild(container);
-});
-
-// === Backup JSON download ===
-downloadJsonBtn.addEventListener("click", () => {
-  const dataStr = JSON.stringify(productions, null, 2);
-  const blob = new Blob([dataStr], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `productions_backup_${new Date()
-    .toISOString()
-    .slice(0, 10)}.json`;
-  a.click();
-  URL.revokeObjectURL(url);
-});
-
-// === Restore JSON Upload ===
-uploadJsonInput.addEventListener("change", (ev) => {
-  const f = ev.target.files[0];
-  if (!f) return;
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    try {
-      const parsed = JSON.parse(e.target.result);
-      if (!Array.isArray(parsed))
-        throw new Error("File bukan format yang benar.");
-      // basic validation
-      const ok = parsed.every((p) => p.menu && p.date && Number(p.qty) > 0);
-      if (!ok)
-        if (!confirm("Beberapa data tampak tidak valid. Tetap lanjutkan?"))
-          return;
-      productions = parsed;
-      localStorage.setItem("productions", JSON.stringify(productions));
-      renderProducts();
-      alert("Restore berhasil.");
-    } catch (err) {
-      alert("Gagal restore: " + err.message);
-    }
-  };
-  reader.readAsText(f);
-});
-
-// === Reset data ===
-resetDataBtn.addEventListener("click", () => {
-  if (!confirm("Yakin ingin menghapus semua data stok?")) return;
-  localStorage.clear();
-  productions = [];
-  renderProducts();
-});
-
+// === Scan Barcode ===
 let html5QrCode;
 
 startScanBtn.addEventListener("click", async () => {
@@ -361,9 +171,7 @@ startScanBtn.addEventListener("click", async () => {
   const readerContainer = document.getElementById("reader");
   readerContainer.innerHTML = "";
 
-  // Pastikan popup sudah muncul sepenuhnya
   await new Promise((res) => requestAnimationFrame(() => setTimeout(res, 300)));
-
   html5QrCode = new Html5Qrcode("reader");
 
   try {
@@ -376,11 +184,13 @@ startScanBtn.addEventListener("click", async () => {
         );
 
         if (found) {
-          scanResult.innerHTML = `
-            ✅ <b>${found.menu}</b><br>
-            Stok: ${found.qty}<br>
-            Tanggal Produksi: ${found.date}
-          `;
+          // tampilkan popup detail
+          document.getElementById("detailMenu").textContent = found.menu;
+          document.getElementById("detailDate").textContent = found.date;
+          document.getElementById("detailStock").textContent = found.qty;
+          document.getElementById("checkoutQty").value = "";
+          document.getElementById("detailPopup").classList.remove("hidden");
+          window.scannedProduct = found;
         } else {
           scanResult.textContent = "❌ Barcode tidak ditemukan!";
         }
@@ -393,31 +203,52 @@ startScanBtn.addEventListener("click", async () => {
     );
   } catch (err) {
     console.error("Gagal akses kamera:", err);
-    alert(
-      "⚠️ Kamera gagal dinyalakan. Pastikan izin kamera sudah diberikan dan tidak sedang dipakai aplikasi lain."
-    );
+    alert("⚠️ Gagal menyalakan kamera. Pastikan izin sudah diberikan.");
     scanPopup.classList.add("hidden");
   }
 });
 
+// === Tutup Scan ===
 closeScanBtn.addEventListener("click", async () => {
-  if (html5QrCode) {
-    await html5QrCode.stop().catch(() => {});
-  }
+  if (html5QrCode) await html5QrCode.stop().catch(() => {});
   scanPopup.classList.add("hidden");
   document.getElementById("reader").innerHTML = "";
 });
 
-stopScanBtn.addEventListener("click", async () => {
-  if (html5QrCode) {
-    try {
-      await html5QrCode.stop();
-    } catch (err) {
-      console.warn("Gagal stop kamera:", err);
-    }
-  }
-  document.getElementById("reader").innerHTML = "";
-  scanPopup.classList.add("hidden");
+// === Checkout Produk ===
+const detailPopup = document.getElementById("detailPopup");
+const confirmCheckoutBtn = document.getElementById("confirmCheckoutBtn");
+const cancelCheckoutBtn = document.getElementById("cancelCheckoutBtn");
+
+cancelCheckoutBtn.addEventListener("click", () => {
+  detailPopup.classList.add("hidden");
+  window.scannedProduct = null;
+});
+
+confirmCheckoutBtn.addEventListener("click", () => {
+  if (!window.scannedProduct) return alert("Produk tidak ditemukan.");
+  const qtyOut = parseInt(document.getElementById("checkoutQty").value);
+  if (!qtyOut || qtyOut <= 0)
+    return alert("Masukkan jumlah keluar yang benar.");
+
+  const product = productions.find(
+    (p) =>
+      p.menu === window.scannedProduct.menu &&
+      p.date === window.scannedProduct.date
+  );
+
+  if (!product) return alert("Produk tidak ditemukan di data stok.");
+  if (qtyOut > product.qty) return alert("Jumlah keluar melebihi stok!");
+
+  product.qty -= qtyOut;
+  localStorage.setItem("productions", JSON.stringify(productions));
+
+  alert(
+    `✅ ${qtyOut} ${product.menu} berhasil dikeluarkan.\nSisa stok: ${product.qty}`
+  );
+  renderProducts();
+  detailPopup.classList.add("hidden");
+  window.scannedProduct = null;
 });
 
 renderProducts();

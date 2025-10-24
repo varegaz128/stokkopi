@@ -1,6 +1,6 @@
 {
-  "name": "Stok Produksi",
-  "short_name": "StokApp",
+  "name": "Stok Produk",
+  "short_name": "KopiDisell",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#ffffff",

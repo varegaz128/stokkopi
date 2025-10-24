@@ -405,18 +405,30 @@ startScanBtn.addEventListener("click", async () => {
 
               found.qty -= jumlah;
 
-              // Simpan ke localStorage
+              // Update produksi
               const idx = productions.findIndex(
                 (p) => p.menu === found.menu && p.date === found.date
               );
               if (idx >= 0) productions[idx] = found;
               localStorage.setItem("productions", JSON.stringify(productions));
 
+              // === Simpan ke history ===
+              const now = new Date();
+              histories.push({
+                date: found.date,
+                menu: found.menu,
+                qty: jumlah,
+                time: now.toLocaleString("id-ID"),
+              });
+              localStorage.setItem("histories", JSON.stringify(histories));
+
               popup.querySelector("#stok-val").textContent = found.qty;
               alert(
                 `✅ ${jumlah} ${found.menu} keluar. Stok sekarang: ${found.qty}`
               );
+
               renderProducts();
+              renderHistory();
             });
 
             popup.querySelector("#tutupBtn").addEventListener("click", () => {
@@ -452,6 +464,24 @@ stopScanBtn.addEventListener("click", async () => {
   document.getElementById("reader").innerHTML = "";
   scanPopup.classList.add("hidden");
 });
+let histories = JSON.parse(localStorage.getItem("histories")) || [];
+function renderHistory() {
+  const tableBody = document.querySelector("#historyTable tbody");
+  if (!tableBody) return;
+
+  tableBody.innerHTML = histories
+    .map(
+      (h) => `
+      <tr>
+        <td>${h.date}</td>
+        <td>${h.menu}</td>
+        <td>${h.qty}</td>
+        <td>${h.time}</td>
+      </tr>
+    `
+    )
+    .join("");
+}
 
 // === Init render ===
 renderProducts();

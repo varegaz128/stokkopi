@@ -1,10 +1,11 @@
 <!DOCTYPE html>
 <html lang="id">
   <head>
+    <link rel="manifest" href="manifest.json" />
+    <meta name="theme-color" content="#4CAF50" />
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>DISELL Coffee — Manager</title>
-
     <link rel="stylesheet" href="style.css" />
 
     <!-- QR library -->
@@ -18,6 +19,12 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   </head>
   <body>
+    <script>
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.register("/service-worker.js");
+      }
+    </script>
+
     <header>
       <div class="header-inner">
         <h1>DISELL COFFEE ☕</h1>

@@ -374,19 +374,57 @@ startScanBtn.addEventListener("click", async () => {
           (p) => `${p.menu}-${p.date}` === decodedText
         );
 
-        if (found) {
-          scanResult.innerHTML = `
-            ✅ <b>${found.menu}</b><br>
-            Stok: ${found.qty}<br>
-            Tanggal Produksi: ${found.date}
-          `;
-        } else {
-          scanResult.textContent = "❌ Barcode tidak ditemukan!";
-        }
-
         html5QrCode.stop().then(() => {
           readerContainer.innerHTML = "";
           scanPopup.classList.add("hidden");
+
+          if (found) {
+            // === Popup interaktif ===
+            const popup = document.createElement("div");
+            popup.className = "popup-overlay";
+            popup.innerHTML = `
+        <div class="popup-content" style="color:#000;background:#fff;border:none;">
+          <h3>📦 ${found.menu}</h3>
+          <p><b>Tanggal:</b> ${found.date}</p>
+          <p><b>Stok Saat Ini:</b> <span id="stok-val">${found.qty}</span></p>
+
+          <div style="margin-top:10px;display:flex;justify-content:center;gap:8px;flex-wrap:wrap;">
+            <button id="keluarBtn" style="background:#d12a08;color:#fff;border:none;padding:8px 12px;border-radius:8px;">Barang Keluar</button>
+            <button id="tutupBtn" style="background:#999;color:#fff;border:none;padding:8px 12px;border-radius:8px;">Tutup</button>
+          </div>
+        </div>
+      `;
+            document.body.appendChild(popup);
+
+            // Aksi tombol
+            popup.querySelector("#keluarBtn").addEventListener("click", () => {
+              const keluar = prompt("Masukkan jumlah barang keluar:", "1");
+              const jumlah = parseInt(keluar);
+              if (!jumlah || jumlah <= 0) return alert("Jumlah tidak valid.");
+              if (jumlah > found.qty) return alert("Stok tidak cukup!");
+
+              found.qty -= jumlah;
+
+              // Simpan ke localStorage
+              const idx = productions.findIndex(
+                (p) => p.menu === found.menu && p.date === found.date
+              );
+              if (idx >= 0) productions[idx] = found;
+              localStorage.setItem("productions", JSON.stringify(productions));
+
+              popup.querySelector("#stok-val").textContent = found.qty;
+              alert(
+                `✅ ${jumlah} ${found.menu} keluar. Stok sekarang: ${found.qty}`
+              );
+              renderProducts();
+            });
+
+            popup.querySelector("#tutupBtn").addEventListener("click", () => {
+              document.body.removeChild(popup);
+            });
+          } else {
+            alert("❌ Barcode tidak ditemukan di data produksi!");
+          }
         });
       }
     );

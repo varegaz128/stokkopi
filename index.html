@@ -29,16 +29,6 @@
       <div class="header-inner">
         <h1>DISELL COFFEE ☕</h1>
         <p>Production & Barcode Manager</p>
-        <div class="header-actions">
-          <button id="exportExcelBtn">📥 Export XLSX</button>
-          <button id="exportPdfBtn">📄 Export PDF</button>
-          <button id="downloadJsonBtn">💾 Backup JSON</button>
-          <label class="upload-btn">
-            🔁 Restore
-            <input id="uploadJsonInput" type="file" accept=".json" hidden />
-          </label>
-          <button id="resetDataBtn" class="danger">🧹 Reset Data</button>
-        </div>
       </div>
     </header>
 
@@ -82,32 +72,54 @@
 
           <div id="scanResult" class="scan-result"></div>
         </div>
-        <div class="print-all">
-          <button id="printAllBtn">🖨️ Print Semua QR</button>
-        </div>
       </section>
 
-      <section class="list-section">
-        <h2>Daftar Produksi</h2>
-        <div id="productList" class="product-grid"></div>
-        <h3 style="margin-top: 30px">📜 Riwayat Barang Keluar</h3>
-        <table
-          id="historyTable"
-          border="1"
-          cellspacing="0"
-          cellpadding="6"
-          style="width: 100%; text-align: center; border-collapse: collapse"
-        >
-          <thead>
-            <tr>
-              <th>Tanggal</th>
-              <th>Menu</th>
-              <th>Jumlah</th>
-              <th>Jenis</th>
-              <th>Total Stok Sekarang</th>
-              <th>Waktu</th>
-            </tr>
-          </thead>
+     <section class="list-section">
+  <h2>Daftar Produksi</h2>
+  <div id="productList" class="product-grid"></div>
+
+  <button id="showHistoryBtn" class="history-btn">📜 Lihat Riwayat Barang Keluar</button>
+</section>
+
+<!-- === POPUP RIWAYAT === -->
+<div id="historyPopup" class="popup-overlay hidden">
+  <div class="popup-content large">
+    <button id="closeHistoryBtn" class="close-btn">✕</button>
+    <h3>📜 Riwayat Barang Keluar</h3>
+
+    <div class="export-actions">
+      <button id="exportPdfBtn">📄 Download PDF</button>
+      <button id="exportExcelBtn">📊 Download Excel</button>
+    </div>
+
+    <div class="table-wrapper">
+      <table
+        id="historyTable"
+        border="1"
+        cellspacing="0"
+        cellpadding="6"
+        style="width:100%;text-align:center;border-collapse:collapse"
+      >
+        <thead>
+          <tr>
+            <th>Tanggal</th>
+            <th>Menu</th>
+            <th>Jumlah</th>
+            <th>Jenis</th>
+            <th>Total Stok Sekarang</th>
+            <th>Waktu</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <div class="popup-footer">
+      <button id="closePopupHistory">Tutup</button>
+    </div>
+  </div>
+</div>
+
 
           <tbody></tbody>
         </table>

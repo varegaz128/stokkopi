@@ -3,69 +3,154 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Login | Stok Produksi</title>
-    <link rel="stylesheet" href="assets/style.css" />
-    <style>
-      body {
-        font-family: "Poppins", sans-serif;
-        background-color: #f8f9fa;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        height: 100vh;
-      }
-      .card {
-        background: white;
-        border-radius: 16px;
-        box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
-        width: 350px;
-        padding: 25px;
-        text-align: center;
-      }
-      h2 {
-        margin-bottom: 20px;
-        color: #333;
-      }
-      input {
-        width: 100%;
-        padding: 10px;
-        margin: 8px 0;
-        border-radius: 8px;
-        border: 1px solid #ccc;
-      }
-      button {
-        width: 100%;
-        padding: 10px;
-        border: none;
-        border-radius: 8px;
-        background-color: #4caf50;
-        color: white;
-        cursor: pointer;
-        margin-top: 10px;
-      }
-      button:hover {
-        background-color: #45a049;
-      }
-      .link {
-        margin-top: 10px;
-        color: #007bff;
-        cursor: pointer;
-        font-size: 14px;
-      }
-    </style>
+    <title>Login — DISELL Coffee</title>
+    <link rel="stylesheet" href="style.css" />
   </head>
-  <body>
-    <div class="card">
-      <h2 id="formTitle">Login</h2>
+  <body class="login-body">
+    <div class="login-box">
+      <h2>☕ DISELL Coffee</h2>
+      <p id="formTitle">Masuk ke sistem produksi</p>
 
-      <input type="text" id="username" placeholder="Username" />
-      <input type="password" id="password" placeholder="Password" />
+      <!-- ===== LOGIN FORM ===== -->
+      <form id="loginForm">
+        <input type="text" id="loginUsername" placeholder="Username" required />
+        <input
+          type="password"
+          id="loginPassword"
+          placeholder="Password"
+          required
+        />
+        <button type="submit">Login</button>
+      </form>
 
-      <button id="submitBtn">Login</button>
+      <!-- ===== REGISTER FORM ===== -->
+      <form id="registerForm" style="display: none">
+        <input
+          type="text"
+          id="regUsername"
+          placeholder="Username baru"
+          required
+        />
+        <input
+          type="password"
+          id="regPassword"
+          placeholder="Password"
+          required
+        />
+        <select id="regRole" required>
+          <option value="">Pilih Role</option>
+          <option value="admin">Admin</option>
+          <option value="staff">Staff</option>
+          <option value="kasir">Kasir</option>
+        </select>
+        <button type="submit">Daftar</button>
+      </form>
 
-      <div id="switchForm" class="link">Belum punya akun? Daftar</div>
+      <p id="toggleText">
+        Belum punya akun?
+        <a href="#" id="toggleLink">Daftar di sini</a>
+      </p>
     </div>
 
-    <script src="user.js"></script>
+    <script>
+      // Ambil users dari localStorage (kalau belum ada, bikin array kosong)
+      let users = JSON.parse(localStorage.getItem("users") || "[]");
+
+      const loginForm = document.getElementById("loginForm");
+      const registerForm = document.getElementById("registerForm");
+      const toggleLink = document.getElementById("toggleLink");
+      const toggleText = document.getElementById("toggleText");
+      const formTitle = document.getElementById("formTitle");
+
+      let isRegister = false;
+
+      // ==== SWITCH LOGIN/REGISTER MODE ====
+      toggleLink.addEventListener("click", (e) => {
+        e.preventDefault();
+        isRegister = !isRegister;
+
+        if (isRegister) {
+          loginForm.style.display = "none";
+          registerForm.style.display = "block";
+          formTitle.textContent = "Daftar Akun Baru";
+          toggleText.innerHTML =
+            'Sudah punya akun? <a href="#" id="toggleLink">Login di sini</a>';
+        } else {
+          loginForm.style.display = "block";
+          registerForm.style.display = "none";
+          formTitle.textContent = "Masuk ke sistem produksi";
+          toggleText.innerHTML =
+            'Belum punya akun? <a href="#" id="toggleLink">Daftar di sini</a>';
+        }
+      });
+
+      // ==== LOGIN ====
+      loginForm.addEventListener("submit", (e) => {
+        e.preventDefault();
+        const username = document
+          .getElementById("loginUsername")
+          .value.trim()
+          .toLowerCase();
+        const password = document.getElementById("loginPassword").value.trim();
+
+        const user = users.find(
+          (u) => u.username === username && u.password === password
+        );
+
+        if (user) {
+          localStorage.setItem("currentUser", JSON.stringify(user));
+          alert(`Selamat datang, ${user.username}!`);
+          window.location.href = "index.html";
+        } else {
+          alert("❌ Username atau password salah!");
+        }
+      });
+
+      // ==== REGISTER ====
+      registerForm.addEventListener("submit", (e) => {
+        e.preventDefault();
+        const username = document
+          .getElementById("regUsername")
+          .value.trim()
+          .toLowerCase();
+        const password = document.getElementById("regPassword").value.trim();
+        const role = document.getElementById("regRole").value;
+
+        if (!username || !password || !role)
+          return alert("⚠️ Lengkapi semua data!");
+
+        if (users.some((u) => u.username === username))
+          return alert("⚠️ Username sudah dipakai!");
+
+        const newUser = {
+          id: Date.now(),
+          username,
+          password,
+          role,
+        };
+
+        users.push(newUser);
+        localStorage.setItem("users", JSON.stringify(users));
+
+        alert("✅ Akun berhasil dibuat! Silakan login.");
+        isRegister = false;
+        loginForm.style.display = "block";
+        registerForm.style.display = "none";
+        formTitle.textContent = "Masuk ke sistem produksi";
+        toggleText.innerHTML =
+          'Belum punya akun? <a href="#" id="toggleLink">Daftar di sini</a>';
+      });
+
+      // ==== AUTO CREATE ADMIN DEFAULT ====
+      if (users.length === 0) {
+        users.push({
+          id: 1,
+          username: "admin",
+          password: "1234",
+          role: "admin",
+        });
+        localStorage.setItem("users", JSON.stringify(users));
+      }
+    </script>
   </body>
 </html>

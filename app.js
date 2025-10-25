@@ -387,3 +387,57 @@ closeScanBtn?.addEventListener("click", async () => {
 // =====================================================
 renderProducts();
 renderHistory();
+// =====================================================
+// 📜 POPUP RIWAYAT BARANG KELUAR
+// =====================================================
+const showHistoryBtn = document.getElementById("showHistoryBtn");
+const historyPopup = document.getElementById("historyPopup");
+const closeHistoryBtn = document.getElementById("closeHistoryBtn");
+const closePopupHistory = document.getElementById("closePopupHistory");
+
+// Tampilkan popup
+showHistoryBtn.addEventListener("click", () => {
+  historyPopup.classList.remove("hidden");
+  renderHistory();
+});
+
+// Tutup popup
+[closeHistoryBtn, closePopupHistory].forEach((btn) =>
+  btn.addEventListener("click", () => {
+    historyPopup.classList.add("hidden");
+  })
+);
+
+// =====================================================
+// 📄 EXPORT PDF
+// =====================================================
+document.getElementById("exportPdfBtn").addEventListener("click", () => {
+  const { jsPDF } = window.jspdf;
+  const pdf = new jsPDF("l", "pt", "a4");
+
+  pdf.text("Riwayat Barang Keluar - DISELL Coffee", 40, 40);
+  html2canvas(document.querySelector("#historyTable")).then((canvas) => {
+    const img = canvas.toDataURL("image/png");
+    const width = 800;
+    const height = (canvas.height * width) / canvas.width;
+    pdf.addImage(img, "PNG", 40, 60, width, height);
+    pdf.save("riwayat-barang-keluar.pdf");
+  });
+});
+
+// =====================================================
+// =====================================================
+// 📊 EXPORT EXCEL
+// =====================================================
+document.getElementById("exportExcelBtn").addEventListener("click", () => {
+  if (histories.length === 0) return alert("Belum ada data riwayat!");
+
+  const worksheet = XLSX.utils.json_to_sheet(histories);
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, "Riwayat");
+
+  const filename = `Riwayat_Barang_Keluar_DISELL_Coffee_${new Date()
+    .toISOString()
+    .slice(0, 10)}.xlsx`;
+  XLSX.writeFile(workbook, filename);
+});

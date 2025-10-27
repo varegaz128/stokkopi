@@ -7,12 +7,6 @@
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>DISELL Coffee — Manager</title>
     <link rel="stylesheet" href="style.css" />
-
-    <script src="https://cdn.jsdelivr.net/npm/qrcodejs/qrcode.min.js"></script>
-    <script src="https://unpkg.com/html5-qrcode@2.3.7/minified/html5-qrcode.min.js"></script>
-    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   </head>
   <body>
     <script>
@@ -163,12 +157,32 @@
       <div class="popup-content">
         <button id="closeScanBtn" class="close-btn">✕</button>
         <h3>Scan Barcode</h3>
-        <div id="reader" class="camera-box"></div>
-        <p id="scanResult"></p>
+        <div
+          id="cameraInfo"
+          class="hidden"
+          style="color: red; text-align: center; margin-top: 10px"
+        >
+          Kamera belum aktif. Tekan tombol di bawah untuk mulai.
+        </div>
+
+        <div id="reader" style="width: 100%; height: 300px; margin: auto"></div>
+        <p id="scanResult" style="text-align: center">
+          Menunggu aktivasi kamera...
+        </p>
+        <button id="triggerCamBtn" class="futuristic-btn">
+          Mulai Kamera Sekarang
+        </button>
         <button id="stopScanBtn" class="stop-btn">Berhenti</button>
       </div>
     </div>
+    <!-- Library eksternal -->
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs/qrcode.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode/minified/html5-qrcode.min.js"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
+    <script src="js/html5-qrcode.min.js"></script>
     <script src="app.js"></script>
   </body>
 </html>

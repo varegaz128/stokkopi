@@ -2,7 +2,7 @@
 <html lang="id">
   <head>
     <link rel="manifest" href="manifest.json" />
-    <meta name="theme-color" content="#4CAF50" />
+    <meta name="theme-color" content="#d12a08" />
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>DISELL Coffee — Manager</title>
@@ -67,7 +67,7 @@
           <div id="scanResult" class="scan-result"></div>
         </div>
 
-        <div class="data-controls">
+        <div class="data-controls" id="dataManagementContainer">
           <button id="downloadJsonBtn">📥 Download JSON</button>
           <label for="uploadJsonInput" class="upload-btn">
             ⬆️ Upload Data JSON
@@ -83,12 +83,14 @@
       </section>
 
       <section class="list-section">
-        <h2>Daftar Produksi</h2>
-        <div id="productList" class="product-grid"></div>
+        <h2>Daftar Stok Produk</h2>
+        <div id="productList" class="product-list-container"></div>
 
-        <button id="showHistoryBtn" class="history-btn">
-          📜 History Produk
-        </button>
+        <div id="historyBtnContainer">
+          <button id="showHistoryBtn" class="history-btn">
+            📜 History Produk
+          </button>
+        </div>
       </section>
 
       <div id="historyPopup" class="popup-overlay hidden">
@@ -147,6 +149,34 @@
           </div>
         </div>
       </div>
+
+      <div id="uniqueBarcodePopup" class="popup-overlay hidden">
+        <div class="popup-content futuristic-popup" style="max-width: 350px">
+          <button
+            id="closeUniqueBarcodeBtn"
+            class="close-btn"
+            style="color: var(--neon-color)"
+          >
+            ✕
+          </button>
+          <h3 id="uniqueBarcodeTitle">Barcode Unik</h3>
+          <div
+            id="uniqueBarcodeContainer"
+            style="margin: 20px auto; width: 250px; height: 250px"
+          ></div>
+          <p
+            id="uniqueBarcodeCode"
+            style="color: white; font-weight: 700; text-align: center"
+          ></p>
+          <button
+            id="printUniqueBarcodeBtn"
+            class="futuristic-btn success-btn hidden"
+            style="width: 100%; margin-top: 15px"
+          >
+            🖨️ Cetak Barcode Ini
+          </button>
+        </div>
+      </div>
     </main>
 
     <footer>
@@ -175,7 +205,6 @@
         <button id="stopScanBtn" class="stop-btn">Berhenti</button>
       </div>
     </div>
-    <!-- Library eksternal -->
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs/qrcode.min.js"></script>
     <script src="https://unpkg.com/html5-qrcode/minified/html5-qrcode.min.js"></script>
     <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>

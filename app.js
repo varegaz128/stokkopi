@@ -76,6 +76,16 @@ const downloadJsonBtn = document.getElementById("downloadJsonBtn");
 const uploadJsonInput = document.getElementById("uploadJsonInput");
 const resetDataBtn = document.getElementById("resetDataBtn");
 
+// !!! BARU: Unique Barcode Popup Elements
+const uniqueBarcodePopup = document.getElementById("uniqueBarcodePopup");
+const closeUniqueBarcodeBtn = document.getElementById("closeUniqueBarcodeBtn");
+const uniqueBarcodeContainer = document.getElementById(
+  "uniqueBarcodeContainer"
+);
+const uniqueBarcodeTitle = document.getElementById("uniqueBarcodeTitle");
+const uniqueBarcodeCode = document.getElementById("uniqueBarcodeCode");
+const printUniqueBarcodeBtn = document.getElementById("printUniqueBarcodeBtn");
+
 // =====================================================
 // 📦 DATA PRODUKSI & HISTORI
 // =====================================================
@@ -99,9 +109,8 @@ function applyAccessControl() {
       if (el) {
         el.classList.add("hidden");
       }
-    });
+    }); // Pastikan tombol SCAN selalu terlihat untuk semua user
 
-    // Pastikan tombol SCAN selalu terlihat untuk semua user
     if (startScanBtn) {
       startScanBtn.classList.remove("hidden");
     }
@@ -137,9 +146,8 @@ function logHistory(data) {
     user: currentUsername || "N/A",
   });
 
-  localStorage.setItem("histories", JSON.stringify(histories));
+  localStorage.setItem("histories", JSON.stringify(histories)); // Hanya Admin yang perlu me-render history karena tombolnya disembunyikan
 
-  // Hanya Admin yang perlu me-render history karena tombolnya disembunyikan
   if (currentUserRole === "admin") {
     renderHistory();
   }
@@ -201,8 +209,9 @@ function renderProducts() {
     localStorage.setItem("productions", JSON.stringify(productions));
   }
 
-  productList.innerHTML = "";
-  productList.classList.add("product-grid");
+  productList.innerHTML = ""; // Hapus class product-grid yang lama dan ganti ke list-container
+  productList.classList.remove("product-grid");
+  productList.classList.add("product-list-container");
 
   if (productions.length === 0) {
     productList.innerHTML = `<p style="text-align:center;color:#666">Belum ada stok ☕</p>`;
@@ -216,106 +225,117 @@ function renderProducts() {
   });
 
   Object.keys(grouped).forEach((menu) => {
-    // Tombol modifikasi (Print/Tanggal) hanya untuk Admin
-    const adminButtons =
-      currentUserRole === "admin"
-        ? `
-        <button class="print-btn" data-menu="${menu}">🖨️ Print Barcode</button>
-        <button class="expand-btn" data-menu="${menu}">Lihat Tanggal</button>
-    `
-        : "";
+    // Hitung total stok untuk tampilan ringkas
+    const totalQty = grouped[menu].reduce((sum, p) => sum + p.qty, 0);
 
-    // Tombol yang boleh diakses user biasa: HANYA barcode dan info tanggal.
-    const userButtons =
-      currentUserRole === "user"
-        ? `
-        <button class="expand-btn" data-menu="${menu}">Lihat Detail Stok</button>
-    `
-        : "";
-
-    const div = document.createElement("div");
-    div.classList.add("product-card");
+    const div = document.createElement("div"); // Gunakan product-item untuk kontainer luar
+    div.classList.add("product-item");
     div.innerHTML = `
-			<div class="product-img ${menu}"></div>
-			<h3>${menu}</h3>
-			<div class="barcode-container" id="barcode-${menu}"></div>
-			${currentUserRole === "admin" ? adminButtons : userButtons} 
-			<div class="info hidden" id="info-${menu}"></div>
-		`;
-    productList.appendChild(div);
+        <div class="product-card" data-menu="${menu}">
+            <div class="product-img ${menu}"></div>
+            <div class="card-content">
+                <h3>${menu}</h3>
+                <p>Total Stok: <strong style="color:var(--accent);">${totalQty}</strong> pcs</p>
+            </div>
+            <span class="card-arrow">▶</span>
+        </div>
+        <div class="product-details-wrapper">
+                                    <div class="product-details" id="details-${menu}">
+                            </div>
+        </div>
+    `;
+    productList.appendChild(div); // !!! BARU: Event listener dipasang untuk tombol card (memicu slide-down)
 
-    const barcodeEl = document.getElementById(`barcode-${menu}`);
-    barcodeEl.innerHTML = "";
-    // Barcode utama ditampilkan untuk semua user
-    new QRCode(barcodeEl, {
-      text: menu,
-      width: 140,
-      height: 140,
-      colorDark: "#000000",
-      colorLight: "#ffffff",
-      correctLevel: QRCode.CorrectLevel.H,
+    div.querySelector(".product-card").addEventListener("click", (e) => {
+      // Mencegah klik saat tombol delete diklik
+      if (e.target.closest(".date-row")?.querySelector(".delete-btn")) return;
+      toggleTanggal(menu);
     });
-  });
+  }); // Hapus Event listener lama (Print/Expand) karena sudah diganti dengan logika di atas
 
-  // Event listener dipasang untuk tombol yang muncul
   document.querySelectorAll(".print-btn").forEach((btn) => {
-    if (currentUserRole === "admin") {
-      btn.addEventListener("click", (e) => printBarcode(e.target.dataset.menu));
-    }
+    /* Logic dihapus */
   });
-
   document.querySelectorAll(".expand-btn").forEach((btn) => {
-    btn.addEventListener("click", (e) => toggleTanggal(e.target.dataset.menu));
+    /* Logic dihapus */
   });
 }
 
 // =====================================================
-// 🗓️ TAMPILKAN TANGGAL PER MENU (User Biasa: Hanya lihat)
+// 🗓️ TAMPILKAN TANGGAL PER MENU (MODIFIKASI: Slide-down Akordeon)
 // =====================================================
 function toggleTanggal(menu) {
-  const info = document.getElementById(`info-${menu}`);
-  if (!info) return;
-  const data = productions.filter((p) => p.menu === menu);
+  const details = document.getElementById(`details-${menu}`);
+  const arrow = document.querySelector(
+    `.product-card[data-menu="${menu}"] .card-arrow`
+  );
 
-  // Tombol aksi hanya untuk Admin
-  const getActionButtons = (p) => {
-    if (currentUserRole === "admin") {
-      return `
-            <button class="small" onclick="updateBarcode('${menu}','${p.date}')">Gunakan Barcode</button>
-            <button class="delete-btn small" onclick="deleteProduct('${menu}','${p.date}')">🗑️ Hapus</button>
-            <button class="small" onclick="printBarcode('${menu}','${p.date}')">🖨️ Print</button>
-          `;
-    }
-    return "";
-  };
+  if (!details || !arrow) return;
 
-  if (info.classList.contains("hidden")) {
-    info.innerHTML = data
+  const data = productions
+    .filter((p) => p.menu === menu)
+    .sort((a, b) => {
+      // Sortir berdasarkan tanggal terbaru (asumsi format DD/MM/YYYY)
+      const [d1, m1, y1] = a.date.split("/").map(Number);
+      const [d2, m2, y2] = b.date.split("/").map(Number);
+      const dateA = new Date(y1, m1 - 1, d1).getTime();
+      const dateB = new Date(y2, m2 - 1, d2).getTime();
+      return dateB - dateA; // Terbaru di atas
+    });
+
+  if (details.classList.contains("open")) {
+    // Tutup
+    details.style.maxHeight = "0";
+    arrow.classList.remove("open");
+    setTimeout(() => details.classList.remove("open"), 300);
+    details.classList.remove("open");
+  } else {
+    // Buka
+    details.innerHTML = data
       .map(
         (p) => `
-			<div class="date-row">
-				<div>
-					<div><strong>📅 ${p.date}</strong></div>
-					<div style="color:#666">Stok: ${p.qty}</div>
-				</div>
-				<div class="date-btns">
-					${getActionButtons(p)}
-				</div>
-			</div>
-		`
+      <div class="date-row" onclick="showUniqueBarcodePopup('${p.menu}', '${
+          p.date
+        }')">
+        <div>
+          <div><strong>📅 ${p.date}</strong></div>
+        </div>
+        <div style="display: flex; align-items: center;">
+          <span class="stock-qty">Stok: ${p.qty}</span>
+          ${
+          currentUserRole === "admin"
+            ? `<button class="delete-btn" onclick="event.stopPropagation(); deleteProduct('${p.menu}','${p.date}')">🗑️</button>`
+            : ""
+        }
+        </div>
+      </div>
+    `
       )
       .join("");
-    info.classList.remove("hidden");
-    info.style.maxHeight = info.scrollHeight + "px";
-  } else {
-    info.style.maxHeight = "0";
-    setTimeout(() => info.classList.add("hidden"), 300);
+    details.classList.add("open");
+    arrow.classList.add("open"); // Hitung tinggi konten untuk animasi slide
+    details.style.maxHeight = details.scrollHeight + 20 + "px"; // Close all other open details (Accordion behavior)
+
+    document
+      .querySelectorAll(".product-details.open")
+      .forEach((otherDetails) => {
+        if (otherDetails.id !== `details-${menu}`) {
+          otherDetails.style.maxHeight = "0";
+          otherDetails.classList.remove("open");
+          const otherMenu = otherDetails.id.replace("details-", "");
+          const otherArrow = document.querySelector(
+            `.product-card[data-menu="${otherMenu}"] .card-arrow`
+          );
+          if (otherArrow) otherArrow.classList.remove("open");
+        }
+      });
   }
 }
 
 // =====================================================
 // 🧾 UPDATE BARCODE (DIBLOKIR JIKA BUKAN ADMIN)
 // =====================================================
+// !!! FUNGSI INI DIBIARKAN KARENA ADA DI KODE ASLI ANDA
 function updateBarcode(menu, date) {
   if (currentUserRole !== "admin") {
     return alert("❌ Anda tidak memiliki izin untuk mengubah barcode.");
@@ -333,63 +353,163 @@ function updateBarcode(menu, date) {
 }
 
 // =====================================================
-// 🗑️ HAPUS PRODUK (DIBLOKIR JIKA BUKAN ADMIN)
+// 🗑️ HAPUS PRODUK (MODIFIKASI: Tambah Log History)
 // =====================================================
 function deleteProduct(menu, date) {
   if (currentUserRole !== "admin") {
     return alert("❌ Anda tidak memiliki izin untuk menghapus produk.");
   }
   if (!confirm(`Hapus stok ${menu} (${date}) ?`)) return;
+
+  const itemToDelete = productions.find(
+    (p) => p.menu === menu && p.date === date
+  );
+
   productions = productions.filter(
     (p) => !(p.menu === menu && p.date === date)
   );
   localStorage.setItem("productions", JSON.stringify(productions));
+  if (itemToDelete) {
+    logHistory({
+      date: date,
+      menu: menu,
+      qty: itemToDelete.qty,
+      type: "Hapus Stok",
+      total: 0,
+    });
+  }
+
   renderProducts();
 }
 
 // =====================================================
-// 🖨️ PRINT BARCODE (DIBLOKIR JIKA BUKAN ADMIN)
+// 🖨️ PRINT BARCODE (MODIFIKASI: Hanya Admin, hanya print kode unik)
 // =====================================================
-function printBarcode(menu, date = "") {
+function printBarcode(menu, date) {
   if (currentUserRole !== "admin") {
     return alert("❌ Anda tidak memiliki izin untuk mencetak barcode.");
-  }
-  // Logic print tidak berubah
-  const code = date ? `${menu}-${date}` : menu;
+  } // Pastikan date ada saat mencetak dari popup unik
+  if (!date) return alert("Kode unik per tanggal diperlukan untuk mencetak!");
+  const code = `${menu}-${date}`;
   const w = window.open("", "_blank");
   w.document.write(`
-		<html><head><title>Print ${menu}</title>
-		<style>
-			body{font-family:sans-serif;text-align:center;padding:20px}
-			.label{display:inline-block;border:1px solid #ddd;padding:10px;border-radius:8px}
-			.logo{font-weight:800;color:#d12a08;font-size:18px}
-			.menu{font-size:16px;margin-top:8px}
-			.date{font-size:12px;color:#666;margin-bottom:8px}
-		</style>
-		</head><body>
-			<div class="label">
-				<div class="logo">DISELL COFFEE</div>
-				<div class="menu">${menu}</div>
-				${date ? `<div class="date">${date}</div>` : ""}
-				<div id="qrcode"></div>
-			</div>
-			<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
-			<script>
-				new QRCode(document.getElementById('qrcode'), {
-					text: "${code}",
-					width: 200, height: 200,
-					colorDark:'#000', colorLight:'#fff',
-					correctLevel: QRCode.CorrectLevel.H
-				});
-				window.onload = ()=>{window.print();window.onafterprint=()=>window.close();}
-			</script>
-		</body></html>
-	`);
-  w.document.close();
+    <html><head><title>Print ${menu}</title>
+    <style>
+      body{font-family:sans-serif;text-align:center;padding:20px;margin:0;}
+      .label{display:inline-block;border:1px solid #ddd;padding:15px;border-radius:10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);}
+      .logo{font-weight:800;color:#d12a08;font-size:20px; margin-bottom: 5px;}
+      .menu{font-size:18px;margin-top:5px; font-weight: 600;}
+      .date{font-size:14px;color:#666;margin-bottom:10px;}
+    </style>
+    </head><body>
+      <div class="label">
+        <div class="logo">DISELL COFFEE</div>
+        <div class="menu">${menu}</div>
+        <div class="date">${date}</div>
+        <div id="qrcode"></div>
+      </div>
+      <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+      <script>
+        new QRCode(document.getElementById('qrcode'), {
+          text: "${code}",
+          width: 250, height: 250,
+          colorDark:'#000', colorLight:'#fff',
+          correctLevel: QRCode.CorrectLevel.H
+        });
+        window.onload = () => { 
+            setTimeout(() => {
+                window.print();
+                window.onafterprint = () => window.close();
+            }, 500);
+        };
+      </script>
+    </body></html>
+  `);
+  w.document.close(); // Tutup popup setelah print dipicu
+  uniqueBarcodePopup.classList.add("hidden");
 }
 
 // =====================================================
-// 📸 SCAN QR (Futuristik & Fix Kamera)
+// 🔑 POPUP BARCODE UNIK PER TANGGAL (NEW LOGIC)
+// =====================================================
+if (closeUniqueBarcodeBtn) {
+  closeUniqueBarcodeBtn.addEventListener("click", () => {
+    uniqueBarcodePopup.classList.add("hidden");
+  });
+}
+
+function showUniqueBarcodePopup(menu, date) {
+  // Dipanggil saat date-row di slide-down diklik
+  const code = `${menu}-${date}`;
+
+  uniqueBarcodeTitle.textContent = `${menu} (${date})`;
+  uniqueBarcodeCode.textContent = code;
+  uniqueBarcodeContainer.innerHTML = ""; // Clear previous QR
+
+  new QRCode(uniqueBarcodeContainer, {
+    text: code,
+    width: 250,
+    height: 250,
+    colorDark: "#000",
+    colorLight: "#fff",
+    correctLevel: QRCode.CorrectLevel.H,
+  });
+
+  if (currentUserRole === "admin") {
+    printUniqueBarcodeBtn.classList.remove("hidden");
+    // Kloning tombol untuk mengganti listener lama
+    const newPrintBtn = printUniqueBarcodeBtn.cloneNode(true);
+    printUniqueBarcodeBtn.parentNode.replaceChild(
+      newPrintBtn,
+      printUniqueBarcodeBtn
+    );
+    // Pastikan event listener memanggil printBarcode dengan 2 argumen (menu, date)
+    newPrintBtn.addEventListener("click", () => printBarcode(menu, date));
+  } else {
+    printUniqueBarcodeBtn.classList.add("hidden");
+  }
+
+  uniqueBarcodePopup.classList.remove("hidden");
+}
+function showUniqueBarcodePopup(menu, date) {
+  const code = `${menu}-${date}`;
+
+  // Set judul dan kode
+  uniqueBarcodeTitle.textContent = `${menu} (${date})`;
+  uniqueBarcodeCode.textContent = code;
+
+  // Bersihkan QR lama, render ulang dari code tetap
+  uniqueBarcodeContainer.innerHTML = "";
+  new QRCode(uniqueBarcodeContainer, {
+    text: code,
+    width: 250,
+    height: 250,
+    colorDark: "#000",
+    colorLight: "#fff",
+    correctLevel: QRCode.CorrectLevel.H,
+  });
+
+  // Hak akses print khusus admin
+  if (currentUserRole === "admin") {
+    printUniqueBarcodeBtn.classList.remove("hidden");
+
+    // 🧠 Bersihin event listener lama (kalau ada)
+    const newBtn = printUniqueBarcodeBtn;
+    newBtn.replaceWith(newBtn.cloneNode(true));
+
+    // Re-assign listener ke tombol yang baru
+    const updatedPrintBtn = document.getElementById("printUniqueBarcodeBtn");
+    updatedPrintBtn.addEventListener("click", () => printBarcode(menu, date));
+  } else {
+    printUniqueBarcodeBtn.classList.add("hidden");
+  }
+
+  // Tampilkan popup
+  uniqueBarcodePopup.classList.remove("hidden");
+}
+
+// =====================================================
+// 📸 SCAN QR (Futuristik & Fix Kamera) (TIDAK BERUBAH)
 // =====================================================
 let html5QrCode;
 
@@ -400,13 +520,11 @@ if (startScanBtn) {
   startScanBtn.addEventListener("click", () => {
     scanPopup.classList.remove("hidden");
     scanResult.textContent = "Menunggu aktivasi kamera...";
-    readerDiv.innerHTML = "";
-    // Pastikan tombol trigger dan info ditampilkan di awal
+    readerDiv.innerHTML = ""; // Pastikan tombol trigger dan info ditampilkan di awal
     cameraInfo.classList.remove("hidden");
     triggerCamBtn.classList.remove("hidden");
     triggerCamBtn.textContent = "Mulai Kamera Sekarang";
-    triggerCamBtn.disabled = false;
-    // Hapus style background hitam sementara agar terlihat transparan jika berhasil
+    triggerCamBtn.disabled = false; // Hapus style background hitam sementara agar terlihat transparan jika berhasil
     readerDiv.style.backgroundColor = "transparent";
   });
 }
@@ -431,9 +549,8 @@ if (triggerCamBtn) {
         (errorMessage) => {
           console.warn("Scan error: ", errorMessage);
         }
-      );
+      ); // Jika BERHASIL: Sembunyikan tombol trigger
 
-      // Jika BERHASIL: Sembunyikan tombol trigger
       cameraInfo.classList.add("hidden");
       scanResult.textContent = "Kamera aktif. Arahkan ke barcode.";
       readerDiv.style.backgroundColor = "transparent";
@@ -445,16 +562,15 @@ if (triggerCamBtn) {
         "❌ Gagal mengakses kamera. Silakan cek izin browser.";
 
       alert(`
-              ❌ GAGAL AKSES KAMERA! 
-              
-              Penyebab utama: Izin akses ditolak atau perangkat tidak ditemukan.
-              
-              **SOLUSI: Pastikan Anda menjalankan di 'http://localhost' dan secara manual atur izin kamera di pengaturan browser (ikon gembok/kamera).**
-              
-              Detail Error Teknis: ${errMsg}
-            `);
+              ❌ GAGAL AKSES KAMERA! 
+              
+              Penyebab utama: Izin akses ditolak atau perangkat tidak ditemukan.
+              
+              **SOLUSI: Pastikan Anda menjalankan di 'http://localhost' dan secara manual atur izin kamera di pengaturan browser (ikon gembok/kamera).**
+              
+              Detail Error Teknis: ${errMsg}
+            `); // Kembalikan tombol ke keadaan semula
 
-      // Kembalikan tombol ke keadaan semula
       triggerCamBtn.textContent = "Mulai Kamera Sekarang";
       triggerCamBtn.disabled = false;
     }
@@ -464,35 +580,32 @@ if (triggerCamBtn) {
 async function handleScan(decodedText) {
   productions = JSON.parse(localStorage.getItem("productions") || "[]");
 
-  const found = productions.find((p) => `${p.menu}-${p.date}` === decodedText);
+  const found = productions.find((p) => `${p.menu}-${p.date}` === decodedText); // Hentikan scan segera setelah ditemukan
 
-  // Hentikan scan segera setelah ditemukan
   if (html5QrCode) await html5QrCode.stop().catch(() => {});
 
   readerDiv.innerHTML = "";
   scanPopup.classList.add("hidden");
 
-  if (!found) return alert("❌ Barcode tidak ditemukan di data produksi!");
+  if (!found) return alert("❌ Barcode tidak ditemukan di data produksi!"); // Popup interaktif stok (Futuristik)
 
-  // Popup interaktif stok (Futuristik)
   const popup = document.createElement("div");
   popup.className = "popup-overlay";
   popup.innerHTML = `
-		<div class="popup-content futuristic-popup">
-			<h3>📦 ${found.menu}</h3>
-			<p><b>Tanggal Produksi:</b> <span class="futuristic-data">${found.date}</span></p>
-			<p><b>Stok Saat Ini:</b> <span id="stok-val" class="futuristic-data">${found.qty}</span></p>
+    <div class="popup-content futuristic-popup">
+      <h3>📦 ${found.menu}</h3>
+      <p><b>Tanggal Produksi:</b> <span class="futuristic-data">${found.date}</span></p>
+      <p><b>Stok Saat Ini:</b> <span id="stok-val" class="futuristic-data">${found.qty}</span></p>
 
-			<div style="margin-top:20px;display:flex;justify-content:center;gap:12px;flex-wrap:wrap;">
-				<button id="masukBtn" class="futuristic-btn success-btn">⬆️ Barang Masuk</button>
-				<button id="keluarBtn" class="futuristic-btn danger-btn">⬇️ Barang Keluar</button>
-			</div>
-			<button id="tutupBtn" class="futuristic-btn secondary-btn" style="margin-top: 10px;">Tutup</button>
-		</div>
-	`;
-  document.body.appendChild(popup);
+      <div style="margin-top:20px;display:flex;justify-content:center;gap:12px;flex-wrap:wrap;">
+        <button id="masukBtn" class="futuristic-btn success-btn">⬆️ Barang Masuk</button>
+        <button id="keluarBtn" class="futuristic-btn danger-btn">⬇️ Barang Keluar</button>
+      </div>
+      <button id="tutupBtn" class="futuristic-btn secondary-btn" style="margin-top: 10px;">Tutup</button>
+    </div>
+  `;
+  document.body.appendChild(popup); // Barang Masuk
 
-  // Barang Masuk
   popup.querySelector("#masukBtn").addEventListener("click", () => {
     const masuk = prompt("Masukkan jumlah barang masuk:", "1");
     const jumlah = parseInt(masuk);
@@ -503,9 +616,8 @@ async function handleScan(decodedText) {
     popup.querySelector("#stok-val").textContent = found.qty;
     alert(`✅ ${jumlah} ${found.menu} masuk. Total: ${found.qty}`);
     popup.remove();
-  });
+  }); // Barang Keluar
 
-  // Barang Keluar
   popup.querySelector("#keluarBtn").addEventListener("click", () => {
     const keluar = prompt("Masukkan jumlah barang keluar:", "1");
     const jumlah = parseInt(keluar);
@@ -517,9 +629,8 @@ async function handleScan(decodedText) {
     popup.querySelector("#stok-val").textContent = found.qty;
     alert(`✅ ${jumlah} ${found.menu} keluar. Sisa: ${found.qty}`);
     popup.remove();
-  });
+  }); // Tutup popup
 
-  // Tutup popup
   popup.querySelector("#tutupBtn").addEventListener("click", () => {
     popup.remove();
   });
@@ -570,30 +681,30 @@ function renderHistory() {
   tableBody.innerHTML = filteredHistories
     .map(
       (h) => `
-			<tr>
-				<td>${h.date}</td>
-				<td>${h.menu}</td>
-				<td style="color: ${
-          h.type === "Keluar" ? "#d12a08" : "#4caf50"
-        }; font-weight: 600;">${h.qty}</td>
-				<td>${h.type}</td>
-				<td>${h.total}</td>
-				<td>${h.time}</td>
-				<td>${h.user || "N/A"}</td>
-			</tr>`
+      <tr>
+        <td>${h.date}</td>
+        <td>${h.menu}</td>
+        <td style="color: ${
+        h.type === "Keluar" ? "#d12a08" : "#4caf50"
+      }; font-weight: 600;">${h.qty}</td>
+        <td>${h.type}</td>
+        <td>${h.total}</td>
+        <td>${h.time}</td>
+        <td>${h.user || "N/A"}</td>
+      </tr>`
     )
     .join("");
 
   const tableHead = document.querySelector("#historyTable thead tr");
   if (tableHead) {
     tableHead.innerHTML = `
-					<th>Tgl Produksi</th>
-					<th>Menu</th>
-					<th>Jumlah</th>
-					<th>Jenis</th>
-					<th>Total Stok</th>
-					<th>Waktu Interaksi</th>
-					<th>User</th> `;
+          <th>Tgl Produksi</th>
+          <th>Menu</th>
+          <th>Jumlah</th>
+          <th>Jenis</th>
+          <th>Total Stok</th>
+          <th>Waktu Interaksi</th>
+          <th>User</th> `;
   }
 }
 
@@ -623,9 +734,15 @@ if (closeScanBtn) {
 // =====================================================
 // 🚀 INIT
 // =====================================================
-renderProducts();
-renderHistory(); // Hanya akan dieksekusi jika admin
-applyAccessControl(); // Terapkan batasan akses saat inisialisasi
+document.addEventListener("DOMContentLoaded", () => {
+  renderProducts();
+  renderHistory(); // Hanya akan dieksekusi jika admin
+  applyAccessControl(); // Terapkan batasan akses saat inisialisasi
+  // Expose functions to global scope for 'onclick' attributes
+  window.showUniqueBarcodePopup = showUniqueBarcodePopup;
+  window.deleteProduct = deleteProduct;
+  window.printBarcode = printBarcode;
+});
 
 // =====================================================
 // 📜 POPUP RIWAYAT BARANG KELUAR (Hanya bisa diakses Admin)

@@ -8,13 +8,9 @@
     <title>DISELL Coffee — Manager</title>
     <link rel="stylesheet" href="style.css" />
 
-    <!-- QR library -->
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs/qrcode.min.js"></script>
-    <!-- QR scanner -->
     <script src="https://unpkg.com/html5-qrcode@2.3.7/minified/html5-qrcode.min.js"></script>
-    <!-- SheetJS (Excel export) -->
     <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
-    <!-- html2canvas + jsPDF (PDF export) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   </head>
@@ -27,8 +23,13 @@
 
     <header>
       <div class="header-inner">
-        <h1>DISELL COFFEE ☕</h1>
-        <p>Production & Barcode Manager</p>
+        <div>
+          <h1>DISELL COFFEE ☕</h1>
+          <p>Production & Barcode Manager</p>
+        </div>
+        <div class="user-info" id="user-info">
+          <button id="userDisplayBtn">👤 <span id="userDisplay"></span></button>
+        </div>
       </div>
     </header>
 
@@ -69,68 +70,95 @@
       <section class="controls">
         <div class="scan-controls">
           <button id="startScanBtn">🎬 Mulai Scan</button>
-
           <div id="scanResult" class="scan-result"></div>
+        </div>
+
+        <div class="data-controls">
+          <button id="downloadJsonBtn">📥 Download JSON</button>
+          <label for="uploadJsonInput" class="upload-btn">
+            ⬆️ Upload Data JSON
+            <input
+              type="file"
+              id="uploadJsonInput"
+              accept=".json"
+              class="hidden"
+            />
+          </label>
+          <button id="resetDataBtn" class="danger">⚠️ Reset Data</button>
         </div>
       </section>
 
-     <section class="list-section">
-  <h2>Daftar Produksi</h2>
-  <div id="productList" class="product-grid"></div>
+      <section class="list-section">
+        <h2>Daftar Produksi</h2>
+        <div id="productList" class="product-grid"></div>
 
-  <button id="showHistoryBtn" class="history-btn">📜 Lihat Riwayat Barang Keluar</button>
-</section>
-
-<!-- === POPUP RIWAYAT === -->
-<div id="historyPopup" class="popup-overlay hidden">
-  <div class="popup-content large">
-    <button id="closeHistoryBtn" class="close-btn">✕</button>
-    <h3>📜 Riwayat Barang Keluar</h3>
-
-    <div class="export-actions">
-      <button id="exportPdfBtn">📄 Download PDF</button>
-      <button id="exportExcelBtn">📊 Download Excel</button>
-    </div>
-
-    <div class="table-wrapper">
-      <table
-        id="historyTable"
-        border="1"
-        cellspacing="0"
-        cellpadding="6"
-        style="width:100%;text-align:center;border-collapse:collapse"
-      >
-        <thead>
-          <tr>
-            <th>Tanggal</th>
-            <th>Menu</th>
-            <th>Jumlah</th>
-            <th>Jenis</th>
-            <th>Total Stok Sekarang</th>
-            <th>Waktu</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-    </div>
-
-    <div class="popup-footer">
-      <button id="closePopupHistory">Tutup</button>
-    </div>
-  </div>
-</div>
-
-
-          <tbody></tbody>
-        </table>
+        <button id="showHistoryBtn" class="history-btn">
+          📜 History Produk
+        </button>
       </section>
+
+      <div id="historyPopup" class="popup-overlay hidden">
+        <div class="popup-content large">
+          <button id="closeHistoryBtn" class="close-btn">✕</button>
+          <h3>📜 Riwayat Barang Keluar</h3>
+
+          <div class="export-actions">
+            <button id="exportPdfBtn">📄 Download PDF</button>
+            <button id="exportExcelBtn">📊 Download Excel</button>
+          </div>
+
+          <div class="table-wrapper">
+            <table
+              id="historyTable"
+              border="1"
+              cellspacing="0"
+              cellpadding="6"
+              style="width: 100%; text-align: center; border-collapse: collapse"
+            >
+              <thead>
+                <tr>
+                  <th>Tanggal</th>
+                  <th>Menu</th>
+                  <th>Jumlah</th>
+                  <th>Jenis</th>
+                  <th>Total Stok Sekarang</th>
+                  <th>Waktu</th>
+                  <th>User</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+
+          <div class="popup-footer">
+            <button id="closePopupHistory">Tutup</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="logoutPopup" class="popup-overlay hidden">
+        <div
+          class="popup-content"
+          style="
+            max-width: 300px;
+            text-align: center;
+            color: #000;
+            background: #fff;
+          "
+        >
+          <p>Yakin ingin keluar?</p>
+          <div class="form-actions" style="justify-content: center">
+            <button id="confirmLogout" class="danger">Keluar</button>
+            <button id="cancelLogout">Batal</button>
+          </div>
+        </div>
+      </div>
     </main>
 
     <footer>
       <small>DISELL Coffee • Local demo (vanilla)</small>
     </footer>
 
-    <!-- Popup kamera -->
     <div id="scanPopup" class="hidden popup-overlay">
       <div class="popup-content">
         <button id="closeScanBtn" class="close-btn">✕</button>
@@ -141,13 +169,6 @@
       </div>
     </div>
 
-    <!-- === QR Code Generator === -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-
-    <!-- === HTML5 QR Code Scanner === -->
-    <script src="https://unpkg.com/html5-qrcode"></script>
-
-    <!-- === App JS === -->
     <script src="app.js"></script>
   </body>
 </html>

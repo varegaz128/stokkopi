@@ -1,8 +1,17 @@
+/* style.css */
+
 :root {
   --accent: #d12a08;
   --dark: #0f0f0f;
   --card: #ffffff;
   --muted: #666;
+  --bg-color: #f6f4f2;
+  --btn-success: #4caf50;
+  --btn-danger: #e74c3c;
+
+  /* VAR BARU UNTUK FUTURISTIK */
+  --neon-color: #00ffcc; /* Cyan terang/hijau neon */
+  --dark-bg-card: #1f1f1f; /* Latar belakang gelap untuk popup futuristik */
 }
 
 * {
@@ -13,10 +22,17 @@ body {
   height: 100%;
   margin: 0;
   font-family: Poppins, system-ui, Arial;
-  background: #f6f4f2;
+  background: var(--bg-color);
   color: var(--dark);
 }
 
+.hidden {
+  display: none !important;
+}
+
+/* -------------------------------------------------- */
+/* HEADER & NAVIGATION */
+/* -------------------------------------------------- */
 header {
   background: var(--accent);
   color: #fff;
@@ -48,6 +64,10 @@ header {
   align-items: center;
   flex-wrap: wrap;
 }
+
+/* -------------------------------------------------- */
+/* BUTTONS & FORM ELEMENTS */
+/* -------------------------------------------------- */
 button,
 .upload-btn {
   background: #fff;
@@ -56,13 +76,35 @@ button,
   border: none;
   cursor: pointer;
   font-weight: 600;
+  transition: background-color 0.2s;
+}
+button:hover {
+  opacity: 0.9;
 }
 button.danger {
-  background: #b30000;
+  background: var(--btn-danger);
   color: #fff;
 }
 .upload-btn input {
   display: none;
+}
+#toggleFormBtn {
+  background: var(--accent);
+  color: #fff;
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+.success-btn {
+  background-color: var(--btn-success) !important;
+  color: white !important;
+}
+.danger-btn {
+  background-color: var(--btn-danger) !important;
+  color: white !important;
+}
+.secondary-btn {
+  background-color: #999 !important;
+  color: white !important;
 }
 
 /* main layout */
@@ -79,12 +121,6 @@ main {
   gap: 12px;
   align-items: flex-start;
   flex-wrap: wrap;
-}
-#toggleFormBtn {
-  background: var(--accent);
-  color: #fff;
-  border-radius: 10px;
-  padding: 10px 12px;
 }
 #addForm {
   background: #fff;
@@ -115,25 +151,7 @@ main {
   gap: 8px;
   margin-top: 10px;
 }
-/* ===== RESPONSIVE FIX ===== */
-@media (max-width: 600px) {
-  .form-section {
-    width: 95%;
-    padding: 0.5rem;
-  }
 
-  #addForm {
-    padding: 0.8rem;
-  }
-
-  .form-actions {
-    flex-direction: column;
-  }
-
-  .form-actions button {
-    width: 100%;
-  }
-}
 /* controls */
 .controls {
   display: flex;
@@ -142,18 +160,10 @@ main {
   gap: 12px;
   margin-bottom: 12px;
 }
-.qr-reader {
-  width: 200px;
-  max-width: 35vw;
-  display: none;
-}
-.scan-result {
-  font-weight: 600;
-  color: var(--accent);
-  margin-top: 8px;
-}
 
-/* product grid */
+/* -------------------------------------------------- */
+/* PRODUCT GRID & CARD */
+/* -------------------------------------------------- */
 .product-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -179,6 +189,7 @@ main {
   background: #eee;
   background-size: contain;
   background-position: center;
+  background-repeat: no-repeat;
   margin-bottom: 12px;
 }
 /* add placeholder background per class if you have images */
@@ -240,23 +251,23 @@ main {
   justify-content: center;
   width: 100%;
 }
-.print-btn {
-  display: none;
+.print-btn,
+.expand-btn {
   padding: 8px 12px;
   background: var(--accent);
   color: #fff;
   border-radius: 8px;
   cursor: pointer;
-}
-.barcode-container.active + .print-btn {
-  display: inline-block;
+  font-weight: 600;
+  font-size: 14px;
 }
 .small {
   padding: 6px 8px;
   font-size: 13px;
+  font-weight: 500;
 }
 .delete-btn {
-  background: #e74c3c;
+  background: var(--btn-danger);
   color: #fff;
   padding: 6px 8px;
   border-radius: 8px;
@@ -266,6 +277,7 @@ main {
 .info {
   width: 100%;
   overflow: hidden;
+  max-height: 0;
   transition: max-height 0.25s ease;
 }
 .date-row {
@@ -283,112 +295,24 @@ main {
   gap: 6px;
 }
 
-/* responsiveness */
-@media (max-width: 900px) {
-  .product-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-  .header-inner {
-    padding-bottom: 8px;
-  }
-}
-@media (max-width: 520px) {
-  .product-grid {
-    grid-template-columns: 1fr;
-  }
-  .controls {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-  .header-actions {
-    gap: 6px;
-  }
-}
-footer {
-  max-width: 1100px;
-  margin: 18px auto;
-  color: var(--muted);
-  font-size: 13px;
-  padding: 0 12px;
-}
-/* === POPUP SCANNER STYLE === */
-.popup-overlay {
-  position: fixed;
-  inset: 0;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  background: rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(5px);
-  z-index: 9999;
-}
-
-.popup-overlay.hidden {
-  display: none;
-}
-
-.popup-content {
-  position: relative;
-  background: rgba(255, 255, 255, 0.1);
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  border-radius: 16px;
-  padding: 20px;
-  width: 90%;
-  max-width: 420px;
-  color: #fff;
-  text-align: center;
-  box-shadow: 0 0 30px rgba(255, 255, 255, 0.2);
-}
-
-.camera-box {
-  width: 100%;
-  height: 320px;
-  border-radius: 12px;
-  overflow: hidden;
-  background: rgba(0, 0, 0, 0.5);
-}
-
-.close-btn {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  background: rgba(255, 255, 255, 0.1);
-  border: none;
-  color: #fff;
-  font-size: 18px;
-  border-radius: 50%;
-  width: 32px;
-  height: 32px;
-  cursor: pointer;
-}
-
-.stop-btn {
-  margin-top: 10px;
-  background: #d12a08;
-  border: none;
-  border-radius: 8px;
-  color: #fff;
-  padding: 8px 16px;
-  cursor: pointer;
-}
-#reader video {
-  width: 100% !important;
-  height: 100% !important;
-  object-fit: cover;
-  display: block;
-}
-/* === Popup Umum === */
+/* -------------------------------------------------- */
+/* POPUP UMUM & RIWAYAT (SCAN & HISTORY) */
+/* -------------------------------------------------- */
 .popup-overlay {
   position: fixed;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.75);
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 999;
+  z-index: 9999;
+  backdrop-filter: blur(3px);
+}
+.popup-overlay.hidden {
+  display: none !important; /* Gunakan !important untuk memastikan hidden */
 }
 
 .popup-content {
@@ -405,8 +329,10 @@ footer {
   animation: popupIn 0.25s ease;
 }
 
-.popup-content.large {
-  width: 90%;
+/* Popup untuk Scan agar lebih fokus ke kamera */
+#scanPopup .popup-content {
+  max-width: 420px;
+  text-align: center;
 }
 
 @keyframes popupIn {
@@ -430,47 +356,146 @@ footer {
   cursor: pointer;
 }
 
-.export-actions {
+/* -------------------------------------------------- */
+/* style.css - HANYA GANTI BLOK INI */
+
+/* -------------------------------------------------- */
+/* BARCODE SCANNER CAMERA STYLES (FIX ABU-ABU & SCANLINE) */
+/* -------------------------------------------------- */
+#reader {
+  /* Fix: Pastikan posisi relatif agar ::before (scanline) bekerja dengan benar */
+  position: relative;
+  width: 90%; /* Gunakan lebar yang lebih fleksibel */
+  max-width: 380px;
+  height: 300px; /* Berikan tinggi yang jelas agar video feed terlihat */
+  border-radius: 10px;
+  overflow: hidden;
+  margin: 10px auto;
+  background-color: #000; /* Latar belakang hitam saat kamera loading */
+  border: 3px solid var(--neon-color);
+  box-shadow: 0 0 10px var(--neon-color);
+}
+
+/* Fix: Memastikan video kamera memenuhi kontainer #reader */
+#reader video {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover;
+  display: block;
+}
+
+/* Fix: Menambahkan garis scan di tengah layar */
+#reader:before {
+  content: "";
+  position: absolute;
+  top: 50%; /* Mulai dari tengah */
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: var(--neon-color);
+  box-shadow: 0 0 10px var(--neon-color);
+  z-index: 10; /* Pastikan di atas video */
+  transform: translateY(-50%); /* Posisikan tepat di tengah */
+  animation: scanline 2.5s infinite linear;
+}
+
+@keyframes scanline {
+  /* Animasi bergerak di sekitar pusat vertikal */
+  0% {
+    transform: translateY(-100%);
+    opacity: 0.1;
+  }
+  25% {
+    transform: translateY(100%);
+    opacity: 1;
+  }
+  50% {
+    transform: translateY(100%);
+    opacity: 1;
+  }
+  75% {
+    transform: translateY(-100%);
+    opacity: 0.1;
+  }
+  100% {
+    transform: translateY(-100%);
+    opacity: 0.1;
+  }
+}
+/* -------------------------------------------------- */
+/* POPUP FUTURISTIK (Setelah Scan Sukses) */
+/* -------------------------------------------------- */
+.futuristic-popup {
+  background: var(--dark-bg-card) !important;
+  color: var(--neon-color) !important;
+  border: 1px solid var(--neon-color);
+  box-shadow: 0 0 15px rgba(0, 255, 204, 0.5);
+}
+.futuristic-popup h3 {
+  text-shadow: 0 0 5px var(--neon-color);
+  border-bottom: 1px dashed var(--neon-color);
+  padding-bottom: 10px;
+  margin-bottom: 15px;
+}
+.futuristic-data {
+  color: white;
+  font-weight: 700;
+  text-shadow: 0 0 3px white;
+  font-size: 1.1em;
+  padding: 2px 5px;
+  border-radius: 3px;
+}
+.futuristic-btn {
+  border: none;
+  font-weight: 700;
+  transition: transform 0.1s;
+}
+.futuristic-btn:hover {
+  box-shadow: 0 0 10px rgba(0, 255, 204, 0.8);
+  transform: scale(1.05);
+}
+
+/* -------------------------------------------------- */
+/* FOOTER & LOGOUT */
+/* -------------------------------------------------- */
+footer {
+  max-width: 1100px;
+  margin: 18px auto;
+  color: var(--muted);
+  font-size: 13px;
+  padding: 0 12px;
+}
+.user-info {
   display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-  margin-bottom: 10px;
+  align-items: center;
 }
-
-.export-actions button {
-  background: #4caf50;
-  color: #fff;
-  border: none;
-  padding: 8px 14px;
+#userDisplayBtn {
+  background: #fff;
+  color: var(--dark);
+  padding: 8px 12px;
   border-radius: 8px;
+  font-weight: 600;
   cursor: pointer;
 }
-
-.export-actions button:nth-child(2) {
-  background: #2196f3;
+#confirmLogout {
+  background: var(--accent) !important;
+  color: #fff !important;
 }
 
-.history-btn {
-  margin-top: 20px;
-  padding: 10px 16px;
-  background: #d12a08;
-  color: #fff;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
+/* -------------------------------------------------- */
+/* RESPONSIVENESS */
+/* -------------------------------------------------- */
+@media (max-width: 900px) {
+  .product-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
-
-.popup-footer {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 15px;
-}
-
-.popup-footer button {
-  background: #999;
-  color: #fff;
-  border: none;
-  padding: 8px 14px;
-  border-radius: 8px;
-  cursor: pointer;
+@media (max-width: 520px) {
+  .product-grid {
+    grid-template-columns: 1fr;
+  }
+  .controls {
+    flex-direction: column;
+    align-items: flex-start;
+  }
 }

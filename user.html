@@ -3,154 +3,219 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Login — DISELL Coffee</title>
-    <link rel="stylesheet" href="style.css" />
-  </head>
-  <body class="login-body">
-    <div class="login-box">
-      <h2>☕ DISELL Coffee</h2>
-      <p id="formTitle">Masuk ke sistem produksi</p>
-
-      <!-- ===== LOGIN FORM ===== -->
-      <form id="loginForm">
-        <input type="text" id="loginUsername" placeholder="Username" required />
-        <input
-          type="password"
-          id="loginPassword"
-          placeholder="Password"
-          required
-        />
-        <button type="submit">Login</button>
-      </form>
-
-      <!-- ===== REGISTER FORM ===== -->
-      <form id="registerForm" style="display: none">
-        <input
-          type="text"
-          id="regUsername"
-          placeholder="Username baru"
-          required
-        />
-        <input
-          type="password"
-          id="regPassword"
-          placeholder="Password"
-          required
-        />
-        <select id="regRole" required>
-          <option value="">Pilih Role</option>
-          <option value="admin">Admin</option>
-          <option value="staff">Staff</option>
-          <option value="kasir">Kasir</option>
-        </select>
-        <button type="submit">Daftar</button>
-      </form>
-
-      <p id="toggleText">
-        Belum punya akun?
-        <a href="#" id="toggleLink">Daftar di sini</a>
-      </p>
-    </div>
-
-    <script>
-      // Ambil users dari localStorage (kalau belum ada, bikin array kosong)
-      let users = JSON.parse(localStorage.getItem("users") || "[]");
-
-      const loginForm = document.getElementById("loginForm");
-      const registerForm = document.getElementById("registerForm");
-      const toggleLink = document.getElementById("toggleLink");
-      const toggleText = document.getElementById("toggleText");
-      const formTitle = document.getElementById("formTitle");
-
-      let isRegister = false;
-
-      // ==== SWITCH LOGIN/REGISTER MODE ====
-      toggleLink.addEventListener("click", (e) => {
-        e.preventDefault();
-        isRegister = !isRegister;
-
-        if (isRegister) {
-          loginForm.style.display = "none";
-          registerForm.style.display = "block";
-          formTitle.textContent = "Daftar Akun Baru";
-          toggleText.innerHTML =
-            'Sudah punya akun? <a href="#" id="toggleLink">Login di sini</a>';
-        } else {
-          loginForm.style.display = "block";
-          registerForm.style.display = "none";
-          formTitle.textContent = "Masuk ke sistem produksi";
-          toggleText.innerHTML =
-            'Belum punya akun? <a href="#" id="toggleLink">Daftar di sini</a>';
-        }
-      });
-
-      // ==== LOGIN ====
-      loginForm.addEventListener("submit", (e) => {
-        e.preventDefault();
-        const username = document
-          .getElementById("loginUsername")
-          .value.trim()
-          .toLowerCase();
-        const password = document.getElementById("loginPassword").value.trim();
-
-        const user = users.find(
-          (u) => u.username === username && u.password === password
-        );
-
-        if (user) {
-          localStorage.setItem("currentUser", JSON.stringify(user));
-          alert(`Selamat datang, ${user.username}!`);
-          window.location.href = "index.html";
-        } else {
-          alert("❌ Username atau password salah!");
-        }
-      });
-
-      // ==== REGISTER ====
-      registerForm.addEventListener("submit", (e) => {
-        e.preventDefault();
-        const username = document
-          .getElementById("regUsername")
-          .value.trim()
-          .toLowerCase();
-        const password = document.getElementById("regPassword").value.trim();
-        const role = document.getElementById("regRole").value;
-
-        if (!username || !password || !role)
-          return alert("⚠️ Lengkapi semua data!");
-
-        if (users.some((u) => u.username === username))
-          return alert("⚠️ Username sudah dipakai!");
-
-        const newUser = {
-          id: Date.now(),
-          username,
-          password,
-          role,
-        };
-
-        users.push(newUser);
-        localStorage.setItem("users", JSON.stringify(users));
-
-        alert("✅ Akun berhasil dibuat! Silakan login.");
-        isRegister = false;
-        loginForm.style.display = "block";
-        registerForm.style.display = "none";
-        formTitle.textContent = "Masuk ke sistem produksi";
-        toggleText.innerHTML =
-          'Belum punya akun? <a href="#" id="toggleLink">Daftar di sini</a>';
-      });
-
-      // ==== AUTO CREATE ADMIN DEFAULT ====
-      if (users.length === 0) {
-        users.push({
-          id: 1,
-          username: "admin",
-          password: "1234",
-          role: "admin",
-        });
-        localStorage.setItem("users", JSON.stringify(users));
+    <title>DISELL Coffee — Akses Manager</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      /* --- VARIABEL & RESET --- */
+      :root {
+        --color-primary: #d12a08;
+        --color-bg: #1e1e1e;
+        --color-card: #2c2c2c;
+        --color-text-primary: #ffffff;
+        --color-input-bg: #3c3c3c;
+        --laser-color: #ff3366; /* Neon Red for Laser */
       }
-    </script>
+      * {
+        box-sizing: border-box;
+      }
+      .hidden {
+        display: none !important;
+      }
+
+      /* --- BODY & MAIN LAYOUT --- */
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background-color: var(--color-bg);
+        color: var(--color-text-primary);
+        font-family: "Inter", sans-serif;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
+      main {
+        width: 100%;
+        max-width: 380px;
+        padding: 20px;
+      }
+
+      /* --- AUTH CONTAINER --- */
+      .auth-container {
+        background-color: var(--color-card);
+        padding: 30px;
+        border-radius: 12px;
+        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.4);
+        text-align: center;
+      }
+      .auth-container h1 {
+        color: var(--color-primary);
+        margin-bottom: 20px;
+        font-size: 24px;
+      }
+      .auth-container h2 {
+        color: var(--color-text-primary);
+        margin-bottom: 20px;
+        font-size: 20px;
+      }
+
+      /* --- FORM & INPUT --- */
+      input,
+      select {
+        /* Tambahkan select di sini */
+        width: 100%;
+        padding: 12px;
+        margin-bottom: 15px;
+        border: 1px solid #555;
+        border-radius: 6px;
+        background-color: var(--color-input-bg);
+        color: var(--color-text-primary);
+        font-size: 16px;
+      }
+      select option {
+        background-color: var(--color-input-bg);
+        color: var(--color-text-primary);
+      }
+
+      /* --- BUTTONS --- */
+      button {
+        padding: 12px;
+        font-size: 16px;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: background-color 0.3s;
+        width: 100%;
+        margin-top: 10px;
+        font-weight: 600;
+        color: white;
+      }
+      .primary-btn {
+        background-color: var(--color-primary);
+      }
+      .success-btn {
+        background-color: #4caf50;
+      }
+      .switch-btn {
+        margin-top: 15px;
+        cursor: pointer;
+        color: #aaaaaa;
+        font-size: 14px;
+      }
+      .switch-btn:hover {
+        text-decoration: underline;
+      }
+
+      /* === LOADING SCREEN STYLE (TETAP SAMA) === */
+      #loadingOverlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: var(--color-bg);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        z-index: 10000;
+        transition: opacity 0.5s ease-out;
+      }
+      .logo-display {
+        position: relative;
+        width: 200px;
+        height: 200px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        overflow: hidden;
+      }
+      .logo-text {
+        font-size: 28px;
+        font-weight: 800;
+        color: var(--color-text-primary);
+        text-shadow: 0 0 8px var(--laser-color);
+        z-index: 10;
+        text-align: center;
+      }
+      .laser {
+        position: absolute;
+        bottom: 0;
+        left: 50%;
+        width: 3px;
+        height: 100%;
+        background: linear-gradient(
+          to top,
+          var(--laser-color),
+          rgba(255, 51, 102, 0)
+        );
+        box-shadow: 0 0 8px var(--laser-color), 0 0 16px var(--laser-color);
+        transform-origin: bottom;
+        animation: scanLaser 2s infinite ease-in-out;
+        z-index: 5;
+      }
+      @keyframes scanLaser {
+        0% {
+          transform: scaleY(0);
+          opacity: 0.1;
+        }
+        50% {
+          transform: scaleY(1);
+          opacity: 1;
+        }
+        100% {
+          transform: scaleY(0);
+          opacity: 0.1;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="loadingOverlay">
+      <div class="logo-display">
+        <div class="logo-text">DISELL COFFEE</div>
+        <div class="laser"></div>
+      </div>
+      <p style="color: #aaaaaa; margin-top: 20px">Loading Manager System...</p>
+    </div>
+    <main>
+      <div class="auth-container">
+        <h1>DISELL COFFEE ☕</h1>
+
+        <form id="authForm" onsubmit="return false;">
+          <h2 id="formTitle">Login</h2>
+
+          <input type="text" id="username" placeholder="Username" required />
+          <input
+            type="password"
+            id="password"
+            placeholder="Password"
+            required
+          />
+
+          <input
+            type="password"
+            id="regPin"
+            placeholder="PIN Pendaftaran"
+            class="hidden"
+          />
+
+          <select id="userRole" class="hidden">
+            <option value="user">User Biasa</option>
+            <option value="admin">Admin Tertinggi</option>
+          </select>
+
+          <button type="button" id="submitBtn" class="primary-btn">
+            Login
+          </button>
+        </form>
+
+        <p id="switchForm" class="switch-btn">Belum punya akun? Daftar</p>
+      </div>
+    </main>
+
+    <script src="user.js"></script>
   </body>
 </html>

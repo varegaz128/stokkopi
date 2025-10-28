@@ -543,7 +543,7 @@ if (triggerCamBtn) {
 
     try {
       await html5QrCode.start(
-        { facingMode: "user" }, // Menggunakan kamera depan
+        { facingMode: "environment" }, // Menggunakan kamera depan
         { fps: 10, qrbox: { width: 250, height: 250 } },
         (decodedText) => handleScan(decodedText),
         (errorMessage) => {

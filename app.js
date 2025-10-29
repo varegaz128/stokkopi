@@ -1,45 +1,20 @@
 import { db, ref, set, get, child, remove } from "./firebase.js";
 
-// =====================================================
-// 🔄 Sinkronisasi Firebase + LocalStorage
-// =====================================================
-
-// Simpan data ke Firebase + LocalStorage
-async function saveData(key, data) {
-  try {
-    localStorage.setItem(key, JSON.stringify(data)); // backup lokal
-    await set(ref(db, key), data); // simpan ke firebase
-    console.log(`✅ ${key} disimpan ke Firebase`);
-  } catch (err) {
-    console.error(`❌ Gagal menyimpan ${key}:`, err);
-  }
-}
-
-// Ambil data dari LocalStorage dulu, fallback ke Firebase
-async function loadData(key) {
-  try {
-    const local = localStorage.getItem(key);
-    if (local) return JSON.parse(local);
-
-    const snapshot = await get(child(ref(db), key));
-    if (snapshot.exists()) {
-      const data = snapshot.val();
-      localStorage.setItem(key, JSON.stringify(data));
-      console.log(`☁️ ${key} dimuat dari Firebase`);
-      return data;
-    }
-  } catch (err) {
-    console.error(`❌ Gagal memuat ${key}:`, err);
-  }
-  return [];
-}
+// ⭐ HAPUS FUNGSI saveData DAN loadData. KITA AKAN GUNAKAN SET DAN GET LANGSUNG.
 
 console.log("✅ app.js aktif dan Firebase tersambung", db);
 
 // app.js
 
 // =====================================================
-// 🔒 CEK LOGIN & AMBIL USER DATA
+// 📦 VARIABEL GLOBAL (Diperbarui)
+// =====================================================
+let allUsersFromFirebase = {}; // Menyimpan data semua user
+let currentUser = null; // Menyimpan username
+let currentUserRole = null; // Menyimpan role
+
+// =====================================================
+// 🔒 CEK LOGIN & AMBIL USER DATA (MODIFIKASI MURNI FIREBASE)
 // =====================================================
 const userDisplay = document.getElementById("userDisplay");
 const userDisplayBtn = document.getElementById("userDisplayBtn");
@@ -47,22 +22,85 @@ const logoutPopup = document.getElementById("logoutPopup");
 const confirmLogoutBtn = document.getElementById("confirmLogout");
 const cancelLogoutBtn = document.getElementById("cancelLogout");
 
+// Ambil username dari localStorage (Ini tetap kita gunakan sbg token login)
 const currentUsername = localStorage.getItem("currentUser");
-const allUsers = JSON.parse(localStorage.getItem("users") || "{}");
-const currentUserData = allUsers[currentUsername];
+currentUser = currentUsername; // Set variabel global
 
-// Tentukan Role User Saat Ini
-const currentUserRole = currentUserData ? currentUserData.role : null;
+// ⭐ FUNGSI BARU: Load data user, products, dan history
+async function initializeUserData() {
+  if (!currentUsername) {
+    // Jika tidak ada user di localStorage, redirect ke halaman login
+    window.location.href = "user.html";
+    return false;
+  }
 
-if (!currentUsername || !currentUserData) {
-  // Jika tidak ada user atau data user, redirect ke halaman login
-  window.location.href = "user.html";
-} else {
-  // Tampilkan nama user dan role di header
+  try {
+    // 1. Ambil data user dari Firebase
+    const userSnapshot = await get(ref(db, "users"));
+    if (userSnapshot.exists()) {
+      allUsersFromFirebase = userSnapshot.val();
+      const currentUserData = allUsersFromFirebase[currentUsername];
+
+      if (currentUserData) {
+        currentUserRole = currentUserData.role;
+      }
+    }
+  } catch (error) {
+    console.error("Gagal memuat data user dari Firebase:", error);
+  }
+
+  // 2. Pengecekan Akhir: Validasi Role dari Firebase
+  if (!currentUserRole) {
+    // ⭐ PERBAIKAN PENTING UNTUK MENGHENTIKAN LOOPING REDIRECT
+    console.warn(
+      "User terdaftar lokal, tapi data role tidak ditemukan di Firebase. Redirect ke login."
+    );
+    localStorage.removeItem("currentUser"); // Hapus token
+    window.location.href = "user.html";
+    return false;
+  }
+
+  // 3. Tampilkan nama user dan role di header
   if (userDisplay) {
     userDisplay.textContent = `${currentUsername} (${currentUserRole.toUpperCase()})`;
   }
+
+  // 4. Muat data master (Produksi & History)
+  await loadDataInitial();
+
+  // 5. Terapkan batasan akses (Panggilan fungsi lama Anda)
+  applyAccessControl(); // Panggil fungsi ini setelah currentUserRole terisi
+
+  return true;
 }
+
+// ⭐ BARU: Fungsi untuk memuat data master (dipanggil dari initializeUserData)
+async function loadDataInitial() {
+  try {
+    const [prodSnap, histSnap] = await Promise.all([
+      get(ref(db, "productions")),
+      get(ref(db, "histories")),
+    ]);
+
+    // Ubah dari object ke array (asumsi penyimpanan Firebase adalah objek)
+    productions = prodSnap.exists() ? Object.values(prodSnap.val()) : [];
+    histories = histSnap.exists() ? Object.values(histSnap.val()) : [];
+
+    // Simpan ke LocalStorage sebagai OFFLINE CACHE saja
+    localStorage.setItem("productions", JSON.stringify(productions));
+    localStorage.setItem("histories", JSON.stringify(histories));
+  } catch (err) {
+    console.error("Gagal memuat data awal dari Firebase:", err);
+    // Fallback: Gunakan cache localStorage jika Firebase gagal
+    productions = JSON.parse(localStorage.getItem("productions") || "[]");
+    histories = JSON.parse(localStorage.getItem("histories") || "[]");
+  }
+  renderProducts();
+  renderHistory();
+}
+
+// Panggil fungsi inisialisasi
+document.addEventListener("DOMContentLoaded", initializeUserData);
 
 // Event listener untuk tombol user (tampilkan popup logout)
 if (userDisplayBtn) {

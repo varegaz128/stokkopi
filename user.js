@@ -17,10 +17,6 @@ function hideLoading() {
   }
 }
 
-window.addEventListener("load", () => {
-  setTimeout(hideLoading, 2000);
-});
-
 // =====================================================
 // 🔒 AUTH LOGIC & PIN
 // =====================================================
@@ -33,6 +29,7 @@ const regPinInput = document.getElementById("regPin");
 const userRoleSelect = document.getElementById("userRole");
 
 let isLoginMode = true; // Mode awal: Login
+let users = {}; // ⭐ BARU: Variabel global untuk menyimpan data user dari Firebase
 
 // Cek apakah user sudah login
 if (localStorage.getItem("currentUser")) {
@@ -45,8 +42,33 @@ if (localStorage.getItem("currentUser")) {
   }, 500);
 }
 
+// ⭐ FUNGSI BARU: LOAD SEMUA USER DARI FIREBASE
+async function loadUsersFromFirebase() {
+  try {
+    const dbRef = ref(db);
+    const snapshot = await get(child(dbRef, `users`));
+    if (snapshot.exists()) {
+      users = snapshot.val();
+      console.log("✅ Data user berhasil dimuat dari Firebase.");
+    } else {
+      users = {}; // Kosong jika belum ada user
+    }
+  } catch (error) {
+    console.error("❌ Gagal memuat user dari Firebase:", error); // Biarkan users kosong dan lanjutkan, login/register akan gagal jika koneksi putus
+  }
+}
+
 // =====================================================
-// 🔄 GANTI MODE LOGIN / REGISTER
+// 🚀 INIT DENGAN LOAD DATA
+// =====================================================
+window.addEventListener("load", async () => {
+  // Tunggu data user dimuat sebelum menyembunyikan loading screen
+  await loadUsersFromFirebase();
+  setTimeout(hideLoading, 500); // Persingkat loading setelah data dimuat
+});
+
+// =====================================================
+// 🔄 GANTI MODE LOGIN / REGISTER (TETAP)
 // =====================================================
 if (switchForm) {
   switchForm.addEventListener("click", () => {
@@ -72,7 +94,7 @@ if (switchForm) {
 }
 
 // =====================================================
-// 🧠 LOGIN & REGISTER
+// 🧠 LOGIN & REGISTER (MODIFIKASI FIREBASE)
 // =====================================================
 if (submitBtn) {
   submitBtn.addEventListener("click", async () => {
@@ -82,12 +104,10 @@ if (submitBtn) {
     if (!username || !password) {
       alert("Isi semua field dulu ya!");
       return;
-    }
+    } // ❌ HAPUS: const users = JSON.parse(localStorage.getItem("users") || "{}"); // ⭐ GUNAKAN VARIABEL GLOBAL 'users' YANG SUDAH DI-LOAD // === LOGIN MODE (MODIFIKASI FIREBASE) ===
 
-    const users = JSON.parse(localStorage.getItem("users") || "{}");
-
-    // === LOGIN MODE ===
     if (isLoginMode) {
+      // ⭐ Gunakan data 'users' global yang sudah dimuat dari Firebase
       if (users[username] && users[username].password === password) {
         localStorage.setItem("currentUser", username);
         alert(
@@ -106,9 +126,8 @@ if (submitBtn) {
         alert("❌ Username atau password salah!");
       }
       return;
-    }
+    } // === REGISTER MODE (MODIFIKASI FIREBASE) ===
 
-    // === REGISTER MODE ===
     let selectedRole = userRoleSelect.value;
     const pinInput = regPinInput.value;
 
@@ -128,24 +147,31 @@ if (submitBtn) {
       return;
     }
 
-    // Simpan ke LocalStorage (offline backup)
-    users[username] = { password, role: selectedRole };
-    localStorage.setItem("users", JSON.stringify(users));
+    // LOGIC: Role Admin hanya bisa dipilih jika belum ada Admin lain.
+    const isAdminExists = Object.values(users).some((u) => u.role === "admin");
+    let finalRole = selectedRole;
+    if (selectedRole === "admin" && isAdminExists) {
+      alert(
+        "⚠️ Role Admin sudah terdaftar! Akun ini akan didaftarkan sebagai User Biasa."
+      );
+      finalRole = "user";
+    } // ❌ HAPUS: users[username] = { password, role: selectedRole }; // ❌ HAPUS: localStorage.setItem("users", JSON.stringify(users)); // Simpan ke Firebase
 
-    // Simpan ke Firebase
     try {
       await set(ref(db, "users/" + username), {
-        username: username,
+        // Hapus username jika kunci (path) sudah username
         password: password,
-        role: selectedRole,
+        role: finalRole,
         createdAt: new Date().toISOString(),
       });
 
-      alert(
-        `✅ Registrasi berhasil!\nRole: ${selectedRole.toUpperCase()}\nData tersimpan di Firebase.`
-      );
+      // ⭐ UPDATE VARIABEL GLOBAL setelah berhasil disimpan
+      users[username] = { password, role: finalRole };
 
-      // Balik ke mode login
+      alert(
+        `✅ Registrasi berhasil!\nRole: ${finalRole.toUpperCase()}\nData tersimpan di Firebase.`
+      ); // Balik ke mode login
+
       isLoginMode = true;
       formTitle.textContent = "Login";
       submitBtn.textContent = "Login";

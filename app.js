@@ -1,4 +1,35 @@
-import { db, ref, set, get, child, remove } from "./firebase.js";
+import { db, ref, set, get, push, update, remove } from "./firebase.js";
+
+// Fungsi bantu simpan ke lokal dan Firebase
+async function saveData(path, data) {
+  // Simpan ke localStorage
+  localStorage.setItem(path, JSON.stringify(data));
+
+  try {
+    // Simpan ke Firebase
+    await set(ref(db, path), data);
+    console.log("✅ Data tersimpan ke Firebase:", path);
+  } catch (error) {
+    console.warn("⚠️ Firebase offline, simpan lokal saja:", path);
+  }
+}
+
+// Ambil data (prioritas dari localStorage dulu)
+async function loadData(path) {
+  // Coba dari localStorage
+  const local = localStorage.getItem(path);
+  if (local) return JSON.parse(local);
+
+  // Kalau kosong, ambil dari Firebase
+  const snapshot = await get(ref(db, path));
+  if (snapshot.exists()) {
+    const data = snapshot.val();
+    localStorage.setItem(path, JSON.stringify(data)); // backup lokal
+    return data;
+  }
+
+  return null;
+}
 
 console.log("✅ app.js aktif dan Firebase tersambung", db);
 
@@ -101,8 +132,8 @@ const printUniqueBarcodeBtn = document.getElementById("printUniqueBarcodeBtn");
 // =====================================================
 // 📦 DATA PRODUKSI & HISTORI
 // =====================================================
-let productions = JSON.parse(localStorage.getItem("productions") || "[]");
-let histories = JSON.parse(localStorage.getItem("histories") || "[]");
+let productions = (await loadData("productions")) || [];
+let histories = (await loadData("histories")) || [];
 
 // =====================================================
 // 🔒 IMPLEMENTASI BATASAN AKSES (ROLE-BASED)
@@ -158,7 +189,7 @@ function logHistory(data) {
     user: currentUsername || "N/A",
   });
 
-  localStorage.setItem("histories", JSON.stringify(histories)); // Hanya Admin yang perlu me-render history karena tombolnya disembunyikan
+  saveData("histories", JSON.stringify(histories)); // Hanya Admin yang perlu me-render history karena tombolnya disembunyikan
 
   if (currentUserRole === "admin") {
     renderHistory();
@@ -198,7 +229,7 @@ if (form) {
     const totalNew = existing ? existing.qty : qty;
     logHistory({ date: today, menu, qty, type: "Produksi", total: totalNew });
 
-    localStorage.setItem("productions", JSON.stringify(productions));
+    saveData("productions", JSON.stringify(productions));
     alert(`✅ ${menu} (${qty} pcs) ditambahkan!`);
     qtyInput.value = "";
     form.classList.add("hidden");
@@ -218,7 +249,7 @@ function renderProducts() {
   );
   if (valid.length !== productions.length) {
     productions = valid;
-    localStorage.setItem("productions", JSON.stringify(productions));
+    saveData("productions", JSON.stringify(productions));
   }
 
   productList.innerHTML = ""; // Hapus class product-grid yang lama dan ganti ke list-container
@@ -393,7 +424,7 @@ function deleteProduct(menu, date) {
   productions = productions.filter(
     (p) => !(p.menu === menu && p.date === date)
   );
-  localStorage.setItem("productions", JSON.stringify(productions));
+  saveData("productions", JSON.stringify(productions));
   if (itemToDelete) {
     logHistory({
       date: date,
@@ -644,7 +675,7 @@ function updateStock(item, type, jumlah) {
   );
   if (idx >= 0) productions[idx] = item;
 
-  localStorage.setItem("productions", JSON.stringify(productions));
+  saveData("productions", JSON.stringify(productions));
 
   logHistory({
     date: item.date,
@@ -955,15 +986,11 @@ if (uploadJsonInput) {
         if (
           confirm("Yakin ingin menimpa data saat ini dengan data dari file?")
         ) {
-          if (data.users)
-            localStorage.setItem("users", JSON.stringify(data.users));
+          if (data.users) saveData("users", JSON.stringify(data.users));
           if (data.productions)
-            localStorage.setItem(
-              "productions",
-              JSON.stringify(data.productions)
-            );
+            saveData("productions", JSON.stringify(data.productions));
           if (data.histories)
-            localStorage.setItem("histories", JSON.stringify(data.histories));
+            saveData("histories", JSON.stringify(data.histories));
           alert("✅ Data berhasil diimpor! Halaman akan dimuat ulang.");
           window.location.reload();
         }
@@ -1006,11 +1033,10 @@ async function loadFromFirebase() {
       const data = snapshot.val();
 
       // overwrite localStorage hanya kalau ada data di Firebase
-      if (data.users) localStorage.setItem("users", JSON.stringify(data.users));
+      if (data.users) saveData("users", JSON.stringify(data.users));
       if (data.productions)
-        localStorage.setItem("productions", JSON.stringify(data.productions));
-      if (data.histories)
-        localStorage.setItem("histories", JSON.stringify(data.histories));
+        saveData("productions", JSON.stringify(data.productions));
+      if (data.histories) saveData("histories", JSON.stringify(data.histories));
 
       console.log("✅ Data dimuat dari Firebase untuk", currentUser);
     } else {

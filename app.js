@@ -75,8 +75,16 @@ const exportPdfBtn = document.getElementById("exportPdfBtn");
 const downloadJsonBtn = document.getElementById("downloadJsonBtn");
 const uploadJsonInput = document.getElementById("uploadJsonInput");
 const resetDataBtn = document.getElementById("resetDataBtn");
+// app.js
 
-// !!! BARU: Unique Barcode Popup Elements
+// ... (Elements untuk data management sebelumnya)
+const exportUserHistoryBtn = document.getElementById("exportUserHistoryBtn");
+
+// !!! BARU: Elemen untuk Export User
+const exportUserPopup = document.getElementById("exportUserPopup");
+const closeExportUserPopup = document.getElementById("closeExportUserPopup");
+const userSelectDropdown = document.getElementById("userSelectDropdown");
+const confirmExportUserBtn = document.getElementById("confirmExportUserBtn");
 const uniqueBarcodePopup = document.getElementById("uniqueBarcodePopup");
 const closeUniqueBarcodeBtn = document.getElementById("closeUniqueBarcodeBtn");
 const uniqueBarcodeContainer = document.getElementById(
@@ -275,60 +283,73 @@ function toggleTanggal(menu) {
   const data = productions
     .filter((p) => p.menu === menu)
     .sort((a, b) => {
-      // Sortir berdasarkan tanggal terbaru (asumsi format DD/MM/YYYY)
+      // Urutkan tanggal terbaru di atas
       const [d1, m1, y1] = a.date.split("/").map(Number);
       const [d2, m2, y2] = b.date.split("/").map(Number);
-      const dateA = new Date(y1, m1 - 1, d1).getTime();
-      const dateB = new Date(y2, m2 - 1, d2).getTime();
-      return dateB - dateA; // Terbaru di atas
+      return new Date(y2, m2 - 1, d2) - new Date(y1, m1 - 1, d1);
     });
 
-  if (details.classList.contains("open")) {
-    // Tutup
+  const isOpen = details.classList.contains("open");
+
+  // Tutup semua detail lain (accordion)
+  document.querySelectorAll(".product-details.open").forEach((other) => {
+    if (other !== details) {
+      other.style.maxHeight = "0";
+      other.classList.remove("open");
+      other.style.marginTop = "0";
+      const otherMenu = other.id.replace("details-", "");
+      const otherArrow = document.querySelector(
+        `.product-card[data-menu="${otherMenu}"] .card-arrow`
+      );
+      if (otherArrow) otherArrow.classList.remove("open");
+    }
+  });
+
+  if (isOpen) {
+    // Tutup detail saat ini
     details.style.maxHeight = "0";
+    details.style.opacity = "0";
+    details.style.marginTop = "0";
     arrow.classList.remove("open");
-    setTimeout(() => details.classList.remove("open"), 300);
-    details.classList.remove("open");
+    setTimeout(() => details.classList.remove("open"), 250);
   } else {
-    // Buka
+    // Isi data
     details.innerHTML = data
       .map(
         (p) => `
-      <div class="date-row" onclick="showUniqueBarcodePopup('${p.menu}', '${
+        <div class="date-row" onclick="showUniqueBarcodePopup('${p.menu}', '${
           p.date
         }')">
-        <div>
-          <div><strong>📅 ${p.date}</strong></div>
-        </div>
-        <div style="display: flex; align-items: center;">
-          <span class="stock-qty">Stok: ${p.qty}</span>
-          ${
-          currentUserRole === "admin"
-            ? `<button class="delete-btn" onclick="event.stopPropagation(); deleteProduct('${p.menu}','${p.date}')">🗑️</button>`
-            : ""
-        }
-        </div>
-      </div>
-    `
+          <div><strong>📅 ${p.date}</strong></div>
+          <div style="display: flex; align-items: center;">
+            <span class="stock-qty">Stok: ${p.qty}</span>
+            ${
+              currentUserRole === "admin"
+                ? `<button class="delete-btn" onclick="event.stopPropagation(); deleteProduct('${p.menu}','${p.date}')">🗑️</button>`
+                : ""
+            }
+          </div>
+        </div>
+      `
       )
       .join("");
-    details.classList.add("open");
-    arrow.classList.add("open"); // Hitung tinggi konten untuk animasi slide
-    details.style.maxHeight = details.scrollHeight + 20 + "px"; // Close all other open details (Accordion behavior)
 
-    document
-      .querySelectorAll(".product-details.open")
-      .forEach((otherDetails) => {
-        if (otherDetails.id !== `details-${menu}`) {
-          otherDetails.style.maxHeight = "0";
-          otherDetails.classList.remove("open");
-          const otherMenu = otherDetails.id.replace("details-", "");
-          const otherArrow = document.querySelector(
-            `.product-card[data-menu="${otherMenu}"] .card-arrow`
-          );
-          if (otherArrow) otherArrow.classList.remove("open");
-        }
-      });
+    // Tampilkan animasi halus
+    details.classList.add("open");
+    arrow.classList.add("open");
+
+    // Reset dulu biar animasi halus
+    details.style.transition = "none";
+    details.style.maxHeight = "0";
+    details.style.opacity = "0";
+    details.style.marginTop = "0";
+    requestAnimationFrame(() => {
+      details.style.transition =
+        "max-height 0.3s ease, opacity 0.3s ease, margin-top 0.2s ease";
+      details.style.maxHeight = details.scrollHeight + 10 + "px";
+      details.style.opacity = "1";
+      details.style.marginTop = "4px"; // nempel tapi tetap ada jarak tipis
+    });
   }
 }
 
@@ -791,21 +812,139 @@ if (exportPdfBtn) {
   });
 }
 
+// app.js
+
+// ... (Kode untuk Import JSON dan Reset Data sebelumnya)
+
 // =====================================================
-// 📊 EXPORT EXCEL (DIBLOKIR JIKA BUKAN ADMIN)
+// 📊 EXPORT EXCEL PER USER (FUNGSI INTI)
 // =====================================================
-if (exportExcelBtn) {
-  exportExcelBtn.addEventListener("click", () => {
-    if (currentUserRole !== "admin")
+function exportUserHistory(username) {
+  if (currentUserRole !== "admin") {
+    return alert("❌ Anda tidak memiliki izin untuk Export Data.");
+  }
+
+  // Ambil data riwayat
+  const allHistories = JSON.parse(localStorage.getItem("histories") || "[]");
+
+  // Filter riwayat hanya untuk user tertentu (perbandingan case-insensitive)
+  const userHistories = allHistories.filter(
+    (h) => h.user && h.user.toLowerCase() === username.toLowerCase()
+  );
+
+  if (userHistories.length === 0) {
+    return alert(
+      `Tidak ada riwayat interaksi yang ditemukan untuk user: ${username}`
+    );
+  }
+
+  // Export ke Excel
+  const ws = XLSX.utils.json_to_sheet(userHistories);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, `Riwayat_${username}`);
+  XLSX.writeFile(wb, `riwayat-interaksi-${username}.xlsx`);
+  alert(`✅ Riwayat interaksi untuk user ${username} berhasil diexport.`);
+}
+
+// =====================================================
+// 🔑 POPUP PILIH USER UNTUK EXPORT (TAMPILKAN POPUP & ISI DROPDOWN)
+// =====================================================
+function openExportUserPopup() {
+  if (currentUserRole !== "admin") {
+    return alert("❌ Anda tidak memiliki izin untuk Export Data.");
+  }
+
+  if (!exportUserPopup || !userSelectDropdown) {
+    console.error("Elemen Export User Popup tidak ditemukan di DOM.");
+    return;
+  }
+
+  // 1. Ambil semua user dari LocalStorage
+  const allUsers = JSON.parse(localStorage.getItem("users") || "{}");
+  // Filter user yang memiliki role terdaftar
+  const usernames = Object.keys(allUsers).filter((name) => allUsers[name].role);
+
+  userSelectDropdown.innerHTML = "";
+
+  // Tambahkan opsi default
+  const defaultOption = document.createElement("option");
+  defaultOption.value = "";
+  defaultOption.textContent = "--- Pilih User ---";
+  userSelectDropdown.appendChild(defaultOption);
+
+  // 2. Isi dropdown
+  usernames.forEach((username) => {
+    const option = document.createElement("option");
+    option.value = username;
+    option.textContent = `${username} (${allUsers[
+      username
+    ].role.toUpperCase()})`;
+    userSelectDropdown.appendChild(option);
+  });
+
+  // 3. Tampilkan popup
+  exportUserPopup.classList.remove("hidden");
+}
+
+// =====================================================
+// 📊 EXPORT RIWAYAT PER USER (EVENT LISTENERS)
+// =====================================================
+
+// 1. Tombol Utama (Membuka Popup)
+if (exportUserHistoryBtn) {
+  exportUserHistoryBtn.addEventListener("click", () => {
+    if (currentUserRole !== "admin") {
       return alert("❌ Anda tidak memiliki izin untuk Export Data.");
-    histories = JSON.parse(localStorage.getItem("histories") || "[]");
-    const ws = XLSX.utils.json_to_sheet(histories);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Riwayat");
-    XLSX.writeFile(wb, "riwayat-interaksi-stok.xlsx");
+    }
+    openExportUserPopup();
   });
 }
 
+// 2. Tombol Tutup Popup
+if (closeExportUserPopup) {
+  closeExportUserPopup.addEventListener("click", () => {
+    exportUserPopup.classList.add("hidden");
+  });
+}
+
+// 3. Tombol Konfirmasi Export di Popup
+if (confirmExportUserBtn) {
+  confirmExportUserBtn.addEventListener("click", () => {
+    // Pengecekan akses ganda
+    if (currentUserRole !== "admin") {
+      exportUserPopup.classList.add("hidden");
+      return alert("❌ Anda tidak memiliki izin untuk Export Data.");
+    }
+
+    const selectedUsername = userSelectDropdown.value;
+
+    if (!selectedUsername) {
+      return alert("Silakan pilih salah satu user yang terdaftar.");
+    }
+
+    // Panggil fungsi export
+    exportUserHistory(selectedUsername);
+
+    // Tutup popup setelah export
+    exportUserPopup.classList.add("hidden");
+  });
+}
+
+// =====================================================
+// 📥 DATA IMPORT/EXPORT JSON & RESET (LANJUTAN CODE ANDA)
+// =====================================================
+// Catatan: Blok di bawah ini harus tetap dipertahankan
+if (uploadJsonInput) {
+  uploadJsonInput.addEventListener("change", (e) => {
+    // ... (Logika upload JSON)
+  });
+}
+
+if (resetDataBtn) {
+  resetDataBtn.addEventListener("click", () => {
+    // ... (Logika reset data)
+  });
+}
 // =====================================================
 // 📥 DATA IMPORT/EXPORT JSON & RESET (DIBLOKIR JIKA BUKAN ADMIN)
 // =====================================================

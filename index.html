@@ -66,9 +66,57 @@
           <button id="startScanBtn">🎬 Mulai Scan</button>
           <div id="scanResult" class="scan-result"></div>
         </div>
+        <div id="exportUserPopup" class="popup-overlay hidden">
+          <div class="popup-content futuristic-popup" style="max-width: 400px">
+            <div
+              style="
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                border-bottom: 1px solid #333;
+                padding-bottom: 10px;
+                margin-bottom: 15px;
+              "
+            >
+              <h3>📊 Export Riwayat User</h3>
+              <button
+                id="closeExportUserPopup"
+                class="secondary-btn"
+                style="
+                  background: none;
+                  border: none;
+                  font-size: 24px;
+                  cursor: pointer;
+                "
+              >
+                &times;
+              </button>
+            </div>
 
+            <p>Pilih user yang riwayat interaksinya ingin Anda ekspor:</p>
+
+            <select
+              id="userSelectDropdown"
+              class="futuristic-input"
+              style="width: 100%; margin: 15px 0; padding: 10px"
+            ></select>
+
+            <button
+              id="confirmExportUserBtn"
+              class="futuristic-btn success-btn"
+              style="width: 100%"
+            >
+              Export ke Excel
+            </button>
+          </div>
+        </div>
         <div class="data-controls" id="dataManagementContainer">
           <button id="downloadJsonBtn">📥 Download JSON</button>
+
+          <button id="exportUserHistoryBtn" class="secondary-btn">
+            📊 Export Riwayat Per User
+          </button>
+
           <label for="uploadJsonInput" class="upload-btn">
             ⬆️ Upload Data JSON
             <input
@@ -81,7 +129,6 @@
           <button id="resetDataBtn" class="danger">⚠️ Reset Data</button>
         </div>
       </section>
-
       <section class="list-section">
         <h2>Daftar Stok Produk</h2>
         <div id="productList" class="product-list-container"></div>
@@ -96,7 +143,7 @@
       <div id="historyPopup" class="popup-overlay hidden">
         <div class="popup-content large">
           <button id="closeHistoryBtn" class="close-btn">✕</button>
-          <h3>📜 Riwayat Barang Keluar</h3>
+          <h3>📜 History Produk</h3>
 
           <div class="export-actions">
             <button id="exportPdfBtn">📄 Download PDF</button>
@@ -104,25 +151,21 @@
           </div>
 
           <div class="table-wrapper">
-            <table
-              id="historyTable"
-              border="1"
-              cellspacing="0"
-              cellpadding="6"
-              style="width: 100%; text-align: center; border-collapse: collapse"
-            >
+            <table id="historyTable">
               <thead>
                 <tr>
-                  <th>Tanggal</th>
-                  <th>Menu</th>
-                  <th>Jumlah</th>
-                  <th>Jenis</th>
-                  <th>Total Stok Sekarang</th>
-                  <th>Waktu</th>
-                  <th>User</th>
+                  <th>TGL PRODUKSI</th>
+                  <th>MENU</th>
+                  <th>JUMLAH</th>
+                  <th>JENIS</th>
+                  <th>TOTAL STOK</th>
+                  <th>WAKTU INTERAKSI</th>
+                  <th>USER</th>
                 </tr>
               </thead>
-              <tbody></tbody>
+              <tbody id="historyTableBody">
+                <!-- data akan diisi lewat JS -->
+              </tbody>
             </table>
           </div>
 

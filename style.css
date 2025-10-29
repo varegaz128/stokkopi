@@ -25,6 +25,9 @@ body {
   font-family: Poppins, system-ui, Arial;
   background: var(--bg-color);
   color: var(--dark);
+  height: 100dvh;
+  /* Pastikan scroll halus */
+  -webkit-overflow-scrolling: touch;
 }
 
 .hidden {
@@ -154,13 +157,33 @@ main {
   color: var(--muted);
 }
 
+/* Penyesuaian untuk Input dan Select di iOS/Android */
+
 #addForm select,
 #addForm input {
-  width: 100%;
-  padding: 8px;
-  margin-top: 6px;
-  border-radius: 8px;
+  /* Menghilangkan bayangan dan tampilan default iOS/Android */
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+
+  /* Tambahkan sedikit ruang agar mudah disentuh */
+  min-height: 40px;
+
+  /* Atur border dan radius yang konsisten */
   border: 1px solid #e7e4e2;
+  border-radius: 8px;
+  padding: 8px 10px;
+  background: #fff;
+  font-size: 16px; /* Pastikan font cukup besar agar tidak memicu zoom paksa di iOS */
+  color: var(--dark);
+}
+
+/* Kustomisasi Tampilan Dropdown (Select) */
+#addForm select {
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path fill="%23666" d="M7 10l5 5 5-5H7z"/></svg>');
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  padding-right: 30px; /* Jarak untuk ikon panah */
 }
 
 .form-actions {
@@ -196,6 +219,7 @@ main {
   flex-direction: column;
   align-items: center;
   transition: transform 0.12s;
+  margin-bottom: 0;
 }
 
 .product-card:hover {
@@ -213,14 +237,12 @@ main {
 }
 
 .product-img {
-  width: 100%;
-  height: 150px;
-  border-radius: 10px;
-  background: #eee;
-  background-size: contain;
+  width: 80px; /* Lebarin dari default (biasanya 50-60px) */
+  height: 200px; /* Sesuaikan biar proporsional */
+  background-size: cover; /* Pastikan gambar penuh */
   background-position: center;
-  background-repeat: no-repeat;
-  margin-bottom: 12px;
+  border-radius: 10px; /* Opsional: biar rounded */
+  flex-shrink: 0; /* Biar gak mengecil pas flex container */
 }
 
 /* add placeholder background per class if you have images */
@@ -396,44 +418,48 @@ main {
 
 /* Wrapper detail untuk menempel di card */
 /* Kontainer luar yang membungkus elemen yang di-slide */
+/* Pastikan CSS ini ada di file style.css Anda */
+
+/* Wrapper akordeon (slide-down) */
 .product-details-wrapper {
-  /* !!! SANGAT PENTING: Untuk memastikan max-height bekerja dan menyembunyikan konten */
+  /* Menghilangkan margin atas agar menempel ke card */
+  margin-top: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease-out;
+}
+
+/* Konten di dalam wrapper */
+.product-details {
+  margin-top: 0; /* pastikan gak ada jarak atas */
+  padding-top: 0; /* rapetin padding atas */
+  border-top: 1px solid #ddd; /* garis tipis biar tetep pisah */
+  transition: max-height 0.35s ease, opacity 0.3s ease;
   overflow: hidden;
 }
-
-/* Elemen yang di-slide (details) */
-.product-details {
-  /* Kondisi default: Tertutup */
-  max-height: 0;
-
-  /* Transisi harus diterapkan agar ada animasi */
-  transition: max-height 0.3s ease-in-out;
-
-  /* Tambahkan sedikit padding vertikal agar konten tidak menempel */
-  padding: 0 15px;
-}
-
-/* Kondisi saat terbuka (Kelas 'open' di JS hanya sebagai penanda status,
-   tetapi penting untuk memastikan properti lain benar) */
 .product-details.open {
-  /* Hapus aturan max-height di sini jika Anda mengaturnya di JS.
-       JIKA Anda *masih* ingin menimpanya di CSS, atur ke nilai yang besar: */
-  /* max-height: 1000px; */
-  /* Namun, disarankan max-height dikontrol oleh JS ke 'none' saat terbuka penuh */
-
-  /* Pastikan padding vertikal yang benar hanya terlihat saat terbuka */
-  padding-top: 10px;
-  padding-bottom: 10px;
+  /* maxHeight diatur via JS */
+  border-top: 1px solid #eee; /* Opsional: Garis pemisah dari card atas */
+  padding-bottom: 10px; /* Jarak bawah, sesuaikan jika perlu lebih menempel */
 }
 
-/* Gaya untuk setiap baris di dalam akordeon */
+/* Baris tanggal yang diklik */
 .date-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 8px 0;
+  padding: 10px 0; /* Padding vertikal, hilangkan jika ingin lebih rapat */
+  border-bottom: 1px solid #f0f0f0;
   cursor: pointer;
-  border-bottom: 1px solid #eee;
+  transition: background-color 0.15s;
+  margin: 0; /* Pastikan tidak ada margin */
+}
+
+.date-row:last-child {
+  border-bottom: none;
+}
+
+.date-row:hover {
+  background-color: #f9f9f9;
 }
 
 /* Gaya untuk panah (arrow) */
@@ -660,31 +686,234 @@ footer {
 /* -------------------------------------------------- */
 /* RESPONSIVENESS (Diperbarui untuk list baru) */
 /* -------------------------------------------------- */
+/* -------------------------------------------------- */
+/* RESPONSIVENESS (FINAL FIX) */
+/* -------------------------------------------------- */
+
+/* Default untuk layar besar (Tablet ke atas) */
 @media (max-width: 900px) {
-  .product-grid {
+  /* Turunkan Grid ke 2 kolom di tablet */
+  .product-list-container {
     grid-template-columns: repeat(2, 1fr);
   }
 }
 
 @media (max-width: 520px) {
-  .product-grid {
+  /* Turunkan Grid ke 1 kolom di mobile */
+  .product-list-container {
     grid-template-columns: 1fr;
   }
+
+  /* Tombol Kontrol (Scan & Data Management) */
   .controls {
-    flex-direction: column;
+    flex-direction: column; /* Tumpuk vertikal */
     align-items: stretch;
   }
+
   .scan-controls,
   .data-controls {
     width: 100%;
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: wrap; /* Izinkan tombol wrap */
     gap: 8px;
+    justify-content: space-between;
   }
+
   .data-controls button,
   .data-controls label,
   #startScanBtn {
+    /* Buat tombol mengambil ruang yang sama (sekitar 33% untuk 3 tombol, 50% untuk 2 tombol) */
     flex-grow: 1;
-    min-width: 100px;
+    min-width: 48%; /* Minimal 2 tombol per baris */
   }
+
+  /* Pastikan Form juga menyesuaikan */
+  .form-section {
+    flex-direction: column;
+  }
+  #addForm {
+    width: 100%;
+  }
+}
+
+/* -------------------------------------------------- */
+/* 🛠️ FIX KRITIS: TABEL HISTORY UNTUK MOBILE */
+/* -------------------------------------------------- */
+@media (max-width: 480px) {
+  .table-container {
+    /* Hapus border dan background agar terlihat menyatu dengan body */
+    border: none;
+    background: var(--bg-color);
+  }
+
+  #historyTable {
+    /* Matikan mode fixed table layout agar tidak terlalu kaku */
+    table-layout: auto;
+    font-size: 12px; /* Perkecil font */
+    border: none;
+  }
+
+  /* Matikan display: block pada tbody agar scroll terjadi pada table-container */
+  #historyTable tbody {
+    display: table-row-group;
+    max-height: none;
+    overflow-y: visible;
+    width: auto;
+  }
+
+  /* Hapus paksaan display: table pada thead dan tr */
+  #historyTable thead,
+  #historyTable tbody tr {
+    display: table-row;
+    width: auto;
+    table-layout: auto;
+  }
+
+  /* Hilangkan lebar tetap pada kolom, biarkan auto */
+  #historyTable th:nth-child(1),
+  #historyTable td:nth-child(1),
+  #historyTable th:nth-child(2),
+  #historyTable td:nth-child(2),
+  #historyTable th:nth-child(3),
+  #historyTable td:nth-child(3),
+  #historyTable th:nth-child(4),
+  #historyTable td:nth-child(4),
+  #historyTable th:nth-child(5),
+  #historyTable td:nth-child(5),
+  #historyTable th:nth-child(6),
+  #historyTable td:nth-child(6),
+  #historyTable th:nth-child(7),
+  #historyTable td:nth-child(7) {
+    width: auto;
+  }
+
+  /* Jadikan tabel scrollable horizontal */
+  .table-container {
+    overflow-x: scroll;
+  }
+
+  #historyTable {
+    min-width: 550px; /* Lebar minimum agar tabel tidak terlalu rapat */
+    width: 100%;
+  }
+
+  /* Rapatkan padding di mobile */
+  #historyTable thead th {
+    padding: 5px 3px;
+  }
+  #historyTable tbody td {
+    padding: 3px 3px;
+  }
+}
+/* ===== TABEL HISTORY PRODUK SUPER RAPAT FIX ===== */
+.table-container {
+  width: 100%;
+  overflow-x: auto;
+  border: 1px solid #ddd;
+  background: #fff;
+  font-size: 13px;
+}
+
+/* Tabel utama */
+#historyTable {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  background: #fff;
+  border: 1px solid #ddd;
+}
+
+/* Header tabel */
+#historyTable thead th {
+  background: #1f1f1f;
+  color: #fff;
+  font-weight: 600;
+  text-align: center;
+  padding: 3px 6px; /* rapetin */
+  line-height: 1; /* rapetin jarak teks */
+  border: 1px solid #333;
+  white-space: nowrap;
+}
+
+/* Isi tabel */
+#historyTable tbody td {
+  text-align: center;
+  border: 1px solid #eee;
+  color: #333;
+  padding: 1px 4px; /* super rapet */
+  line-height: 1; /* tanpa ruang ekstra */
+  height: 22px; /* paksa tinggi baris */
+  vertical-align: middle; /* tetap di tengah */
+  white-space: nowrap;
+}
+
+/* Hover baris */
+#historyTable tbody tr:hover {
+  background-color: #f6f6f6;
+  transition: background 0.2s ease;
+}
+
+/* Scrollable body */
+#historyTable thead,
+#historyTable tbody tr {
+  display: table;
+  width: 100%;
+  table-layout: fixed;
+}
+
+#historyTable tbody {
+  display: block;
+  max-height: 400px;
+  overflow-y: auto;
+  width: 100%;
+}
+
+/* Kolom proporsional */
+#historyTable th:nth-child(1),
+#historyTable td:nth-child(1) {
+  width: 14%;
+}
+#historyTable th:nth-child(2),
+#historyTable td:nth-child(2) {
+  width: 18%;
+}
+#historyTable th:nth-child(3),
+#historyTable td:nth-child(3) {
+  width: 10%;
+}
+#historyTable th:nth-child(4),
+#historyTable td:nth-child(4) {
+  width: 12%;
+}
+#historyTable th:nth-child(5),
+#historyTable td:nth-child(5) {
+  width: 12%;
+}
+#historyTable th:nth-child(6),
+#historyTable td:nth-child(6) {
+  width: 20%;
+}
+#historyTable th:nth-child(7),
+#historyTable td:nth-child(7) {
+  width: 14%;
+}
+
+/* Warna dinamis */
+#historyTable td:nth-child(3),
+#historyTable td:nth-child(5) {
+  font-weight: 600;
+}
+#historyTable td:nth-child(3)[style*="#d12a08"],
+#historyTable td:nth-child(5)[style*="#d12a08"] {
+  color: #d12a08 !important;
+}
+#historyTable td:nth-child(3)[style*="#4caf50"],
+#historyTable td:nth-child(5)[style*="#4caf50"] {
+  color: #4caf50 !important;
+}
+#historyTable,
+#historyTable th,
+#historyTable td {
+  border-spacing: 0 !important;
+  border-collapse: collapse !important;
 }

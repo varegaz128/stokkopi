@@ -464,39 +464,6 @@ if (closeUniqueBarcodeBtn) {
 }
 
 function showUniqueBarcodePopup(menu, date) {
-  // Dipanggil saat date-row di slide-down diklik
-  const code = `${menu}-${date}`;
-
-  uniqueBarcodeTitle.textContent = `${menu} (${date})`;
-  uniqueBarcodeCode.textContent = code;
-  uniqueBarcodeContainer.innerHTML = ""; // Clear previous QR
-
-  new QRCode(uniqueBarcodeContainer, {
-    text: code,
-    width: 250,
-    height: 250,
-    colorDark: "#000",
-    colorLight: "#fff",
-    correctLevel: QRCode.CorrectLevel.H,
-  });
-
-  if (currentUserRole === "admin") {
-    printUniqueBarcodeBtn.classList.remove("hidden");
-    // Kloning tombol untuk mengganti listener lama
-    const newPrintBtn = printUniqueBarcodeBtn.cloneNode(true);
-    printUniqueBarcodeBtn.parentNode.replaceChild(
-      newPrintBtn,
-      printUniqueBarcodeBtn
-    );
-    // Pastikan event listener memanggil printBarcode dengan 2 argumen (menu, date)
-    newPrintBtn.addEventListener("click", () => printBarcode(menu, date));
-  } else {
-    printUniqueBarcodeBtn.classList.add("hidden");
-  }
-
-  uniqueBarcodePopup.classList.remove("hidden");
-}
-function showUniqueBarcodePopup(menu, date) {
   const code = `${menu}-${date}`;
 
   // Set judul dan kode
@@ -1027,6 +994,34 @@ if (resetDataBtn) {
     }
   });
 }
+
+async function loadFromFirebase() {
+  const currentUser = localStorage.getItem("currentUser");
+  if (!currentUser) return;
+
+  const dbRef = ref(db, "disellcoffee/" + currentUser);
+  try {
+    const snapshot = await get(dbRef);
+    if (snapshot.exists()) {
+      const data = snapshot.val();
+
+      // overwrite localStorage hanya kalau ada data di Firebase
+      if (data.users) localStorage.setItem("users", JSON.stringify(data.users));
+      if (data.productions)
+        localStorage.setItem("productions", JSON.stringify(data.productions));
+      if (data.histories)
+        localStorage.setItem("histories", JSON.stringify(data.histories));
+
+      console.log("✅ Data dimuat dari Firebase untuk", currentUser);
+    } else {
+      console.warn("⚠️ Tidak ada data di Firebase untuk user ini");
+    }
+  } catch (err) {
+    console.error("❌ Gagal load dari Firebase:", err);
+  }
+}
+let syncTimeout;
+
 function syncToFirebase() {
   const currentUser = localStorage.getItem("currentUser");
   if (!currentUser) return;
@@ -1037,31 +1032,12 @@ function syncToFirebase() {
     histories: JSON.parse(localStorage.getItem("histories") || "[]"),
   };
 
-  set(ref(db, "disellcoffee/" + currentUser), data)
-    .then(() => console.log("✅ Data tersimpan ke Firebase"))
-    .catch((err) => console.error("❌ Gagal sync ke Firebase:", err));
-}
-
-function loadFromFirebase() {
-  const currentUser = localStorage.getItem("currentUser");
-  if (!currentUser) return;
-
-  get(ref(db, "disellcoffee/" + currentUser))
-    .then((snapshot) => {
-      if (snapshot.exists()) {
-        const data = snapshot.val();
-        localStorage.setItem("users", JSON.stringify(data.users || {}));
-        localStorage.setItem(
-          "productions",
-          JSON.stringify(data.productions || [])
-        );
-        localStorage.setItem("histories", JSON.stringify(data.histories || []));
-        console.log("✅ Data dimuat dari Firebase");
-      } else {
-        console.warn("⚠️ Tidak ada data di Firebase untuk user ini");
-      }
-    })
-    .catch((err) => console.error("❌ Gagal memuat data:", err));
+  clearTimeout(syncTimeout);
+  syncTimeout = setTimeout(() => {
+    set(ref(db, "disellcoffee/" + currentUser), data)
+      .then(() => console.log("✅ Data tersimpan ke Firebase"))
+      .catch((err) => console.error("❌ Gagal sync:", err));
+  }, 500);
 }
 const originalSetItem = localStorage.setItem;
 localStorage.setItem = function (key, value) {
@@ -1070,3 +1046,7 @@ localStorage.setItem = function (key, value) {
     syncToFirebase();
   }
 };
+function logout() {
+  localStorage.removeItem("currentUser");
+  window.location.href = "user.html";
+}

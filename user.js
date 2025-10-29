@@ -168,6 +168,3 @@ if (submitBtn) {
     }
   });
 }
-import { db, ref, set, get, child, remove } from "./firebase.js";
-
-console.log("✅ user.js aktif dan Firebase tersambung", db);

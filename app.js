@@ -1030,3 +1030,64 @@ if (resetDataBtn) {
     }
   });
 }
+// =====================================================
+// ☁️ FIREBASE SYNC
+// =====================================================
+
+// SIMPAN semua data ke Firebase
+function syncToFirebase() {
+  const data = {
+    users: JSON.parse(localStorage.getItem("users") || "{}"),
+    productions: JSON.parse(localStorage.getItem("productions") || "[]"),
+    histories: JSON.parse(localStorage.getItem("histories") || "[]"),
+  };
+
+  // Simpan ke Firebase di node sesuai username admin
+  const dbRef = ref(db, `disellcoffee/${currentUsername}`);
+  set(dbRef, data)
+    .then(() => console.log("✅ Data tersimpan ke Firebase"))
+    .catch((err) => console.error("❌ Gagal sync ke Firebase:", err));
+}
+
+// MUAT data dari Firebase (jika ada)
+async function loadFromFirebase() {
+  const dbRef = ref(db, `disellcoffee/${currentUsername}`);
+  try {
+    const snapshot = await get(dbRef);
+    if (snapshot.exists()) {
+      const data = snapshot.val();
+
+      if (data.users) localStorage.setItem("users", JSON.stringify(data.users));
+      if (data.productions)
+        localStorage.setItem("productions", JSON.stringify(data.productions));
+      if (data.histories)
+        localStorage.setItem("histories", JSON.stringify(data.histories));
+
+      console.log("✅ Data dimuat dari Firebase");
+      renderProducts();
+      renderHistory();
+    } else {
+      console.warn("⚠️ Tidak ada data di Firebase, memakai data lokal.");
+    }
+  } catch (err) {
+    console.error("❌ Gagal memuat dari Firebase:", err);
+  }
+}
+
+// =====================================================
+// 🔄 INTEGRASI SYNC OTOMATIS
+// =====================================================
+
+// Saat aplikasi dimuat, ambil data dari Firebase
+document.addEventListener("DOMContentLoaded", () => {
+  loadFromFirebase();
+});
+
+// Setiap kali update stok atau tambah data baru → Sync ke Firebase
+const originalSetItem = localStorage.setItem;
+localStorage.setItem = function (key, value) {
+  originalSetItem.apply(this, arguments);
+  if (["users", "productions", "histories"].includes(key)) {
+    syncToFirebase();
+  }
+};

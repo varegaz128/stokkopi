@@ -1,3 +1,9 @@
+import { db, ref, set } from "./firebase.js";
+
+set(ref(db, "test"), { message: "halo disellcoffee" })
+  .then(() => console.log("✅ Firebase tersambung dengan sukses"))
+  .catch((err) => console.error("❌ Gagal konek Firebase:", err));
+
 // app.js
 
 // =====================================================

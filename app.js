@@ -1,15 +1,12 @@
-import { db, ref, set } from "./firebase.js";
+import { db, ref, set, get, child, remove } from "./firebase.js";
 
-set(ref(db, "test"), { message: "halo disellcoffee" })
-  .then(() => console.log("✅ Firebase tersambung dengan sukses"))
-  .catch((err) => console.error("❌ Gagal konek Firebase:", err));
+console.log("✅ app.js aktif dan Firebase tersambung", db);
 
 // app.js
 
 // =====================================================
 // 🔒 CEK LOGIN & AMBIL USER DATA
 // =====================================================
-
 const userDisplay = document.getElementById("userDisplay");
 const userDisplayBtn = document.getElementById("userDisplayBtn");
 const logoutPopup = document.getElementById("logoutPopup");
@@ -1030,60 +1027,42 @@ if (resetDataBtn) {
     }
   });
 }
-// =====================================================
-// ☁️ FIREBASE SYNC
-// =====================================================
-
-// SIMPAN semua data ke Firebase
 function syncToFirebase() {
+  const currentUser = localStorage.getItem("currentUser");
+  if (!currentUser) return;
+
   const data = {
     users: JSON.parse(localStorage.getItem("users") || "{}"),
     productions: JSON.parse(localStorage.getItem("productions") || "[]"),
     histories: JSON.parse(localStorage.getItem("histories") || "[]"),
   };
 
-  // Simpan ke Firebase di node sesuai username admin
-  const dbRef = ref(db, `disellcoffee/${currentUsername}`);
-  set(dbRef, data)
+  set(ref(db, "disellcoffee/" + currentUser), data)
     .then(() => console.log("✅ Data tersimpan ke Firebase"))
     .catch((err) => console.error("❌ Gagal sync ke Firebase:", err));
 }
 
-// MUAT data dari Firebase (jika ada)
-async function loadFromFirebase() {
-  const dbRef = ref(db, `disellcoffee/${currentUsername}`);
-  try {
-    const snapshot = await get(dbRef);
-    if (snapshot.exists()) {
-      const data = snapshot.val();
+function loadFromFirebase() {
+  const currentUser = localStorage.getItem("currentUser");
+  if (!currentUser) return;
 
-      if (data.users) localStorage.setItem("users", JSON.stringify(data.users));
-      if (data.productions)
-        localStorage.setItem("productions", JSON.stringify(data.productions));
-      if (data.histories)
-        localStorage.setItem("histories", JSON.stringify(data.histories));
-
-      console.log("✅ Data dimuat dari Firebase");
-      renderProducts();
-      renderHistory();
-    } else {
-      console.warn("⚠️ Tidak ada data di Firebase, memakai data lokal.");
-    }
-  } catch (err) {
-    console.error("❌ Gagal memuat dari Firebase:", err);
-  }
+  get(ref(db, "disellcoffee/" + currentUser))
+    .then((snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.val();
+        localStorage.setItem("users", JSON.stringify(data.users || {}));
+        localStorage.setItem(
+          "productions",
+          JSON.stringify(data.productions || [])
+        );
+        localStorage.setItem("histories", JSON.stringify(data.histories || []));
+        console.log("✅ Data dimuat dari Firebase");
+      } else {
+        console.warn("⚠️ Tidak ada data di Firebase untuk user ini");
+      }
+    })
+    .catch((err) => console.error("❌ Gagal memuat data:", err));
 }
-
-// =====================================================
-// 🔄 INTEGRASI SYNC OTOMATIS
-// =====================================================
-
-// Saat aplikasi dimuat, ambil data dari Firebase
-document.addEventListener("DOMContentLoaded", () => {
-  loadFromFirebase();
-});
-
-// Setiap kali update stok atau tambah data baru → Sync ke Firebase
 const originalSetItem = localStorage.setItem;
 localStorage.setItem = function (key, value) {
   originalSetItem.apply(this, arguments);

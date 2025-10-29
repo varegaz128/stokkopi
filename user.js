@@ -146,16 +146,7 @@ if (submitBtn) {
       alert("❌ PIN salah! Pendaftaran dibatalkan.");
       return;
     }
-
-    // LOGIC: Role Admin hanya bisa dipilih jika belum ada Admin lain.
-    const isAdminExists = Object.values(users).some((u) => u.role === "admin");
-    let finalRole = selectedRole;
-    if (selectedRole === "admin" && isAdminExists) {
-      alert(
-        "⚠️ Role Admin sudah terdaftar! Akun ini akan didaftarkan sebagai User Biasa."
-      );
-      finalRole = "user";
-    } // ❌ HAPUS: users[username] = { password, role: selectedRole }; // ❌ HAPUS: localStorage.setItem("users", JSON.stringify(users)); // Simpan ke Firebase
+    // ❌ HAPUS: users[username] = { password, role: selectedRole }; // ❌ HAPUS: localStorage.setItem("users", JSON.stringify(users)); // Simpan ke Firebase
 
     try {
       await set(ref(db, "users/" + username), {

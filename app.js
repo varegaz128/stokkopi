@@ -776,6 +776,49 @@ async function handleScan(decodedText) {
   });
 }
 
+async function loadHistory(date) {
+  try {
+    // default ambil semua tanggal kalau date tidak dikirim
+    const dbRef = ref(db, "histories");
+    const snapshot = await get(child(dbRef, date || ""));
+    if (snapshot.exists()) {
+      const data = snapshot.val();
+
+      // jika data per tanggal
+      let histories = [];
+      if (date) {
+        // data[menuKey][typeKey] => object
+        Object.values(data).forEach((menuObj) => {
+          Object.values(menuObj).forEach((entry) => {
+            histories.push(entry);
+          });
+        });
+      } else {
+        // ambil semua tanggal
+        Object.values(data).forEach((dateObj) => {
+          Object.values(dateObj).forEach((menuObj) => {
+            Object.values(menuObj).forEach((entry) => {
+              histories.push(entry);
+            });
+          });
+        });
+      }
+
+      // simpan juga ke localStorage biar offline
+      localStorage.setItem("histories", JSON.stringify(histories));
+
+      console.log("✅ History berhasil di-load:", histories);
+      return histories;
+    } else {
+      console.log("ℹ️ Tidak ada history untuk tanggal:", date);
+      return [];
+    }
+  } catch (err) {
+    console.error("❌ Gagal load history:", err);
+    return [];
+  }
+}
+
 // =====================================================
 // 🔁 UPDATE STOK + HISTORY (Produksi / Masuk / Keluar / Hapus)
 // =====================================================
@@ -834,12 +877,12 @@ async function updateStock(item, type, jumlah) {
 // =====================================================
 async function logHistory({ date, menu, qty, type, total }) {
   try {
-    const user = currentUsername || "N/A"; // gunakan currentUsername, bukan currentUser
+    const user = currentUsername || "N/A";
+
     const now = new Date();
     const time = now.toLocaleTimeString();
     const fullDate = date || now.toLocaleDateString();
 
-    // Ambil history lokal
     let histories = JSON.parse(localStorage.getItem("histories") || "[]");
 
     const newHistory = {
@@ -855,11 +898,9 @@ async function logHistory({ date, menu, qty, type, total }) {
     histories.push(newHistory);
     localStorage.setItem("histories", JSON.stringify(histories));
 
-    // 🔥 Simpan ke Firebase
     const dbPath = `histories/${encodeURIComponent(
       fullDate
     )}/${encodeURIComponent(menu)}/${type}-${Date.now()}`;
-    await set(ref(db, dbPath), newHistory);
 
     console.log("✅ History tersimpan:", newHistory);
   } catch (err) {

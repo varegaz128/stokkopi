@@ -1,13 +1,13 @@
-// user.js
+// =====================================================
+// 🔥 IMPORT FIREBASE
+// =====================================================
+import { db, ref, set, get, child } from "./firebase.js";
 
 // =====================================================
 // 🚀 INIT & LOADING SCREEN LOGIC
 // =====================================================
 const loadingOverlay = document.getElementById("loadingOverlay");
 
-/**
- * Menyembunyikan loading screen dengan transisi opacity.
- */
 function hideLoading() {
   if (loadingOverlay) {
     loadingOverlay.style.opacity = "0";
@@ -17,7 +17,6 @@ function hideLoading() {
   }
 }
 
-// Tampilkan Loading Screen selama 2 detik saat halaman selesai dimuat
 window.addEventListener("load", () => {
   setTimeout(hideLoading, 2000);
 });
@@ -30,13 +29,12 @@ const submitBtn = document.getElementById("submitBtn");
 const switchForm = document.getElementById("switchForm");
 const usernameInput = document.getElementById("username");
 const passwordInput = document.getElementById("password");
-// Elemen baru untuk Register
 const regPinInput = document.getElementById("regPin");
 const userRoleSelect = document.getElementById("userRole");
 
 let isLoginMode = true; // Mode awal: Login
 
-// Cek apakah user sudah login saat dimuat
+// Cek apakah user sudah login
 if (localStorage.getItem("currentUser")) {
   if (loadingOverlay) {
     loadingOverlay.classList.remove("hidden");
@@ -47,9 +45,9 @@ if (localStorage.getItem("currentUser")) {
   }, 500);
 }
 
-// -----------------------------------------------------
-// Handler: Ganti form (Login <-> Register)
-// -----------------------------------------------------
+// =====================================================
+// 🔄 GANTI MODE LOGIN / REGISTER
+// =====================================================
 if (switchForm) {
   switchForm.addEventListener("click", () => {
     isLoginMode = !isLoginMode;
@@ -63,7 +61,6 @@ if (switchForm) {
     usernameInput.value = "";
     passwordInput.value = "";
 
-    // TAMPILKAN/SEMBUNYIKAN FIELD PIN & ROLE
     if (isLoginMode) {
       regPinInput.classList.add("hidden");
       userRoleSelect.classList.add("hidden");
@@ -74,11 +71,11 @@ if (switchForm) {
   });
 }
 
-// -----------------------------------------------------
-// Handler: Submit (Login atau Register)
-// -----------------------------------------------------
+// =====================================================
+// 🧠 LOGIN & REGISTER
+// =====================================================
 if (submitBtn) {
-  submitBtn.addEventListener("click", () => {
+  submitBtn.addEventListener("click", async () => {
     const username = usernameInput.value.trim();
     const password = passwordInput.value.trim();
 
@@ -87,11 +84,10 @@ if (submitBtn) {
       return;
     }
 
-    // Mengambil data user
     const users = JSON.parse(localStorage.getItem("users") || "{}");
 
+    // === LOGIN MODE ===
     if (isLoginMode) {
-      // === LOGIN LOGIC ===
       if (users[username] && users[username].password === password) {
         localStorage.setItem("currentUser", username);
         alert(
@@ -99,8 +95,6 @@ if (submitBtn) {
             username
           ].role.toUpperCase()})`
         );
-
-        // Tampilkan loading dan redirect
         if (loadingOverlay) {
           loadingOverlay.classList.remove("hidden");
           loadingOverlay.style.opacity = "1";
@@ -111,49 +105,47 @@ if (submitBtn) {
       } else {
         alert("❌ Username atau password salah!");
       }
-    } else {
-      // === REGISTER LOGIC ===
-      const selectedRole = userRoleSelect.value;
-      const pinInput = regPinInput.value;
+      return;
+    }
 
-      if (users[username]) {
-        alert("Username sudah digunakan! Silakan Login.");
-        return;
-      }
-      if (password.length < 6) {
-        alert("Password minimal 6 karakter.");
-        return;
-      }
+    // === REGISTER MODE ===
+    let selectedRole = userRoleSelect.value;
+    const pinInput = regPinInput.value;
 
-      // 🔐 VALIDASI PIN REGISTRASI
-      const REGISTRATION_PIN = "DISELL123"; // <-- ⚠️ PIN ANDA
-      if (pinInput !== REGISTRATION_PIN) {
-        alert("❌ PIN Pendaftaran salah! Pendaftaran dibatalkan.");
-        return;
-      }
+    if (users[username]) {
+      alert("Username sudah digunakan! Silakan Login.");
+      return;
+    }
 
-      // LOGIC: Role Admin hanya bisa dipilih jika belum ada Admin lain.
-      if (selectedRole === "admin") {
-        const isAdminExists = Object.values(users).some(
-          (u) => u.role === "admin"
-        );
-        if (isAdminExists) {
-          alert(
-            "⚠️ Role Admin sudah terdaftar! Akun ini akan didaftarkan sebagai User Biasa."
-          );
-          selectedRole = "user"; // Paksa ke user jika admin sudah ada
-        }
-      }
+    if (password.length < 6) {
+      alert("Password minimal 6 karakter.");
+      return;
+    }
 
-      // Simpan user baru dengan properti role
-      users[username] = { password, role: selectedRole };
-      localStorage.setItem("users", JSON.stringify(users));
+    const REGISTRATION_PIN = "DISELL123";
+    if (pinInput !== REGISTRATION_PIN) {
+      alert("❌ PIN salah! Pendaftaran dibatalkan.");
+      return;
+    }
+
+    // Simpan ke LocalStorage (offline backup)
+    users[username] = { password, role: selectedRole };
+    localStorage.setItem("users", JSON.stringify(users));
+
+    // Simpan ke Firebase
+    try {
+      await set(ref(db, "users/" + username), {
+        username: username,
+        password: password,
+        role: selectedRole,
+        createdAt: new Date().toISOString(),
+      });
 
       alert(
-        `✅ Registrasi berhasil! Role: ${selectedRole.toUpperCase()}. Silakan login.`
+        `✅ Registrasi berhasil!\nRole: ${selectedRole.toUpperCase()}\nData tersimpan di Firebase.`
       );
 
-      // Balik otomatis ke mode login
+      // Balik ke mode login
       isLoginMode = true;
       formTitle.textContent = "Login";
       submitBtn.textContent = "Login";
@@ -161,10 +153,12 @@ if (submitBtn) {
       switchForm.textContent = "Belum punya akun? Daftar";
       usernameInput.value = "";
       passwordInput.value = "";
-      regPinInput.value = ""; // Bersihkan pin
-      // Sembunyikan field tambahan lagi
+      regPinInput.value = "";
       regPinInput.classList.add("hidden");
       userRoleSelect.classList.add("hidden");
+    } catch (error) {
+      console.error("❌ Gagal simpan ke Firebase:", error);
+      alert("Terjadi kesalahan saat menyimpan ke Firebase.");
     }
   });
 }

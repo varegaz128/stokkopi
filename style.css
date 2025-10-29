@@ -917,3 +917,66 @@ footer {
   border-spacing: 0 !important;
   border-collapse: collapse !important;
 }
+/* ✨ FUTURISTIK POPUP KHUSUS EXPORT USER ✨ */
+.futuristic-popup {
+  background: rgba(20, 20, 20, 0.85);
+  border: 1px solid var(--neon-color, #d12a08);
+  border-radius: 16px;
+  box-shadow: 0 0 20px var(--neon-color, #d12a08);
+  backdrop-filter: blur(10px);
+  color: white;
+  text-align: center;
+  padding: 25px;
+  animation: popupFadeIn 0.3s ease;
+}
+/* === DROPDOWN FUTURISTIK DENGAN KONTRAS BAGUS === */
+.futuristic-dropdown {
+  background: rgba(25, 25, 25, 0.85); /* Lebih gelap biar kontras */
+  color: #fff;
+  border: 1px solid var(--neon-color, #d12a08);
+  border-radius: 10px;
+  font-weight: 600;
+  padding: 10px 12px;
+  font-size: 1rem;
+  width: 100%;
+  appearance: none; /* Hilangkan gaya default browser */
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background-image: linear-gradient(
+      45deg,
+      transparent 50%,
+      var(--neon-color, #d12a08) 50%
+    ),
+    linear-gradient(135deg, var(--neon-color, #d12a08) 50%, transparent 50%);
+  background-position: calc(100% - 20px) calc(1em + 2px),
+    calc(100% - 15px) calc(1em + 2px);
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+}
+
+.futuristic-dropdown:hover {
+  background: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 0 10px var(--neon-color, #d12a08);
+}
+
+.futuristic-dropdown:focus {
+  outline: none;
+  box-shadow: 0 0 12px var(--neon-color, #d12a08);
+  background: rgba(255, 255, 255, 0.12);
+}
+
+/* Opsi di dalam dropdown */
+.futuristic-dropdown option {
+  background: #111; /* background dropdown lebih gelap */
+  color: white;
+  font-weight: 600;
+  padding: 10px;
+}
+
+/* Saat user hover/pilih option */
+.futuristic-dropdown option:hover,
+.futuristic-dropdown option:checked,
+.futuristic-dropdown option:focus {
+  background: var(--neon-color, #d12a08);
+  color: #fff;
+}

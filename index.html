@@ -177,6 +177,49 @@
           </button>
         </div>
       </div>
+      <!-- 📊 POPUP EXPORT RIWAYAT PER USER (FUTURISTIK) -->
+      <div id="exportUserPopup" class="popup-overlay hidden">
+        <div class="popup-content futuristic-popup" style="max-width: 400px">
+          <button id="closeExportUserPopup" class="close-btn">✕</button>
+          <h3 style="margin-bottom: 15px">📊 Export Riwayat Per User</h3>
+
+          <p
+            style="
+              color: var(--neon-color);
+              font-weight: 600;
+              margin-bottom: 10px;
+            "
+          >
+            Pilih user yang ingin diexport:
+          </p>
+
+          <select
+            id="userSelectDropdown"
+            class="futuristic-dropdown"
+            style="width: 100%; padding: 10px; font-size: 1rem"
+          >
+            <option value="">-- Pilih User --</option>
+          </select>
+
+          <div
+            class="form-actions"
+            style="margin-top: 20px; justify-content: center; gap: 10px"
+          >
+            <button
+              id="confirmExportUserBtn"
+              class="futuristic-btn success-btn"
+            >
+              🚀 Export Sekarang
+            </button>
+            <button
+              id="cancelExportUserBtn"
+              class="futuristic-btn secondary-btn"
+            >
+              Batal
+            </button>
+          </div>
+        </div>
+      </div>
     </main>
 
     <footer>

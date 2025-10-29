@@ -151,7 +151,7 @@
       </div>
 
       <div id="uniqueBarcodePopup" class="popup-overlay hidden">
-        <div class="popup-content futuristic-popup" style="max-width: 350px">
+        <div class="popup-content futuristic-popup">
           <button
             id="closeUniqueBarcodeBtn"
             class="close-btn"
@@ -160,10 +160,8 @@
             ✕
           </button>
           <h3 id="uniqueBarcodeTitle">Barcode Unik</h3>
-          <div
-            id="uniqueBarcodeContainer"
-            style="margin: 20px auto; width: 250px; height: 250px"
-          ></div>
+          <div id="uniqueBarcodeContainer"></div>
+
           <p
             id="uniqueBarcodeCode"
             style="color: white; font-weight: 700; text-align: center"
@@ -225,6 +223,9 @@
     <footer>
       <small>DISELL Coffee • Local demo (vanilla)</small>
     </footer>
+    <button onclick="showUniqueBarcode('Matchalatte', '30/10/2025')">
+      🔍 Lihat Barcode
+    </button>
 
     <div id="scanPopup" class="hidden popup-overlay">
       <div class="popup-content">
@@ -248,6 +249,39 @@
         <button id="stopScanBtn" class="stop-btn">Berhenti</button>
       </div>
     </div>
+    <!-- 📦 POPUP BARCODE UNIK -->
+    <div id="uniqueBarcodePopup" class="popup-overlay hidden">
+      <div class="popup-content futuristic-popup" style="max-width: 350px">
+        <button
+          id="closeUniqueBarcodeBtn"
+          class="close-btn"
+          style="color: var(--neon-color)"
+        >
+          ✕
+        </button>
+        <h3 id="uniqueBarcodeTitle">Barcode Unik</h3>
+
+        <!-- 🔥 TEMPAT QR BARCODE -->
+        <div
+          id="uniqueBarcodeContainer"
+          style="margin: 20px auto; width: 250px; height: 250px"
+        ></div>
+
+        <p
+          id="uniqueBarcodeCode"
+          style="color: white; font-weight: 700; text-align: center"
+        ></p>
+
+        <button
+          id="printUniqueBarcodeBtn"
+          class="futuristic-btn success-btn hidden"
+          style="width: 100%; margin-top: 15px"
+        >
+          🖨️ Cetak Barcode Ini
+        </button>
+      </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs/qrcode.min.js"></script>
     <script src="https://unpkg.com/html5-qrcode/minified/html5-qrcode.min.js"></script>
     <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>

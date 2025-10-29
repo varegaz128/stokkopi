@@ -11,7 +11,7 @@
 
   /* VAR BARU UNTUK FUTURISTIK */
   --neon-color: #00ffcc; /* Cyan terang/hijau neon */
-  --dark-bg-card: #1f1f1f; /* Latar belakang gelap untuk popup futuristik */
+  --dark-bg-card: #fff; /* Latar belakang gelap untuk popup futuristik */
 }
 
 * {
@@ -979,4 +979,52 @@ footer {
 .futuristic-dropdown option:focus {
   background: var(--neon-color, #d12a08);
   color: #fff;
+}
+/* Popup futuristik fix warna background dan QR readability */
+/* Popup utama */
+.futuristic-popup {
+  background: #400000;
+  border: 2px solid #00ffff;
+  box-shadow: 0 0 25px #00ffff;
+  border-radius: 16px;
+  padding: 20px;
+  max-width: 300px;
+  width: 90%;
+  margin: auto;
+  color: #fff;
+  text-align: center;
+
+  /* 🔥 Pastiin semua isi popup di tengah */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Kontainer barcode biar QR bener-bener center */
+#uniqueBarcodeContainer {
+  width: 220px;
+  height: 220px;
+  background: #fff;
+  border-radius: 10px;
+  display: flex;
+  align-items: center; /* ⬆️ Vertikal center */
+  justify-content: center; /* ↔️ Horizontal center */
+  margin: 15px auto;
+  padding: 8px;
+}
+
+/* Judul popup */
+.futuristic-popup h3 {
+  color: #00ffff;
+  text-shadow: 0 0 10px #00ffff;
+  text-align: center;
+  margin-bottom: 10px;
+}
+
+/* Tombol cetak */
+#printUniqueBarcodeBtn {
+  background: #00c853;
+  color: #fff;
+  font-weight: bold;
 }

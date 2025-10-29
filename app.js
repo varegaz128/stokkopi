@@ -216,22 +216,6 @@ const printUniqueBarcodeBtn = document.getElementById("printUniqueBarcodeBtn");
 })();
 
 // =====================================================
-// 🔒 IMPLEMENTASI BATASAN AKSES (ROLE-BASED)
-// =====================================================
-
-if (currentUserRole !== "admin") {
-  adminOnlyElements.forEach((el) => {
-    if (el) {
-      el.classList.add("hidden");
-    }
-  }); // Pastikan tombol SCAN selalu terlihat untuk semua user
-
-  if (startScanBtn) {
-    startScanBtn.classList.remove("hidden");
-  }
-}
-
-// =====================================================
 // 🧮 EVENT: TAMPIL / SEMBUNYIKAN FORM
 // =====================================================
 if (toggleFormBtn) {
@@ -242,30 +226,6 @@ if (toggleFormBtn) {
 document
   .getElementById("cancelAdd")
   ?.addEventListener("click", () => form.classList.add("hidden"));
-
-// =====================================================
-// 📜 LOG HISTORY
-// =====================================================
-function logHistory(data) {
-  let histories = JSON.parse(localStorage.getItem("histories") || "[]");
-  const now = new Date();
-
-  histories.push({
-    date: data.date,
-    menu: data.menu,
-    qty: data.qty,
-    type: data.type,
-    total: data.total,
-    time: now.toLocaleString("id-ID"),
-    user: currentUsername || "N/A",
-  });
-
-  saveData("histories", histories);
-
-  if (currentUserRole === "admin") {
-    renderHistory();
-  }
-}
 
 // =====================================================
 // ➕ TAMBAH PRODUK (DIBLOKIR JIKA BUKAN ADMIN)
@@ -502,18 +462,64 @@ function toggleTanggal(menu) {
 // 🧾 UPDATE BARCODE (DIBLOKIR JIKA BUKAN ADMIN)
 // =====================================================
 // !!! FUNGSI INI DIBIARKAN KARENA ADA DI KODE ASLI ANDA
-function updateBarcode(menu, date) {
-  if (currentUserRole !== "admin") {
-    return alert("❌ Anda tidak memiliki izin untuk mengubah barcode.");
+
+function showUniqueBarcode(menu, date) {
+  const popup = document.getElementById("uniqueBarcodePopup");
+  const container = document.getElementById("uniqueBarcodeContainer");
+  const title = document.getElementById("uniqueBarcodeTitle");
+  const codeText = document.getElementById("uniqueBarcodeCode");
+  const printBtn = document.getElementById("printUniqueBarcodeBtn");
+
+  // 🧹 Bersihin QR lama bener-bener
+  while (container.firstChild) {
+    container.removeChild(container.firstChild);
   }
-  const el = document.getElementById(`barcode-${menu}`);
-  el.innerHTML = "";
+
+  // 🔥 Generate elemen baru buat QR
+  const newDiv = document.createElement("div");
+  newDiv.id = "temp-qrcode";
+  container.appendChild(newDiv);
+
+  // 🏷️ Update info popup
+  title.textContent = `Barcode: ${menu}`;
+  codeText.textContent = `${menu}-${date}`;
+  printBtn.classList.remove("hidden");
+  popup.classList.remove("hidden");
+
+  // ⚙️ Buat QR BARU (tanpa cache)
+  const qrText = `${menu}|${date}|${Date.now()}`; // tambahin timestamp biar unik
+  const qr = new QRCode(newDiv, {
+    text: qrText,
+    width: 200,
+    height: 200,
+    colorDark: "#000000",
+    colorLight: "#ffffff",
+    correctLevel: QRCode.CorrectLevel.H,
+  });
+
+  console.log("✅ QR baru dibuat:", qrText);
+}
+
+// 🧹 Tutup popup
+document
+  .getElementById("closeUniqueBarcodeBtn")
+  ?.addEventListener("click", () => {
+    document.getElementById("uniqueBarcodePopup").classList.add("hidden");
+  });
+
+function updateBarcode(menu, date) {
+  const id = `barcode-${menu.replace(/\s+/g, "_")}`;
+  const el = document.getElementById(id);
+  if (!el) return console.error("❌ Elemen barcode tidak ditemukan:", id);
+
+  el.innerHTML = ""; // bersihkan dulu biar gak numpuk
+
   new QRCode(el, {
-    text: `${menu}-${date}`,
-    width: 140,
-    height: 140,
-    colorDark: "#000",
-    colorLight: "#fff",
+    text: `${menu}|${date}`,
+    width: 200,
+    height: 200,
+    colorDark: "#000000",
+    colorLight: "#ffffff",
     correctLevel: QRCode.CorrectLevel.H,
   });
 }
@@ -771,46 +777,52 @@ async function handleScan(decodedText) {
 }
 
 // =====================================================
-// 🔁 UPDATE STOK + HISTORY
-// =====================================================
-// =====================================================
-// 🔁 UPDATE STOK + HISTORY (Sinkron Firebase)
+// 🔁 UPDATE STOK + HISTORY (Produksi / Masuk / Keluar / Hapus)
 // =====================================================
 async function updateStock(item, type, jumlah) {
   try {
-    // Cek role
+    // ❌ Cek role
     if (!["admin", "user"].includes(currentUserRole)) {
       return alert("❌ Anda tidak memiliki izin untuk memodifikasi stok.");
     }
 
     // Ambil data lokal
-    productions = JSON.parse(localStorage.getItem("productions") || "[]");
+    let productions = JSON.parse(localStorage.getItem("productions") || "[]");
 
-    // Update item di array lokal
+    // Hitung qty baru sesuai tipe
+    let newQty = item.qty || 0;
+    if (type === "Produksi" || type === "Masuk") newQty += jumlah;
+    if (type === "Hapus" || type === "Keluar") newQty -= jumlah;
+    if (newQty < 0) newQty = 0; // gak boleh minus
+    item.qty = newQty;
+
+    // Update atau tambahkan item di array lokal
     const idx = productions.findIndex(
       (p) => p.menu === item.menu && p.date === item.date
     );
     if (idx >= 0) productions[idx] = item;
+    else productions.push(item);
 
     // Simpan ke localStorage (offline cache)
-    saveData("productions", productions);
+    localStorage.setItem("productions", JSON.stringify(productions));
 
-    // 🧠 Simpan ke Firebase juga (sinkron)
+    // Simpan ke Firebase (sinkron)
     const dbPath = `productions/${encodeURIComponent(
       item.menu
     )}/${encodeURIComponent(item.date)}`;
     await set(ref(db, dbPath), item);
 
-    // Catat di log history (Firebase + local)
+    // 📝 Catat di log history (Firebase + local)
     await logHistory({
       date: item.date,
       menu: item.menu,
       qty: jumlah,
-      type,
+      type, // Produksi / Masuk / Keluar / Hapus
       total: item.qty,
     });
 
-    renderProducts();
+    renderProducts(); // update tabel produk
+    renderHistory(); // update tabel history (admin)
   } catch (err) {
     console.error("❌ Gagal update stok ke Firebase:", err);
     alert("⚠️ Perubahan stok disimpan lokal. Sinkronisasi Firebase gagal.");
@@ -818,46 +830,75 @@ async function updateStock(item, type, jumlah) {
 }
 
 // =====================================================
-// 📋 RENDER HISTORI (Hanya Admin yang melihat via tombol)
+// 📝 LOG HISTORY (Firebase + LocalStorage)
+// =====================================================
+async function logHistory({ date, menu, qty, type, total }) {
+  try {
+    const user = currentUsername || "N/A"; // gunakan currentUsername, bukan currentUser
+    const now = new Date();
+    const time = now.toLocaleTimeString();
+    const fullDate = date || now.toLocaleDateString();
+
+    // Ambil history lokal
+    let histories = JSON.parse(localStorage.getItem("histories") || "[]");
+
+    const newHistory = {
+      date: fullDate,
+      menu,
+      qty,
+      type,
+      total,
+      time,
+      user,
+    };
+
+    histories.push(newHistory);
+    localStorage.setItem("histories", JSON.stringify(histories));
+
+    // 🔥 Simpan ke Firebase
+    const dbPath = `histories/${encodeURIComponent(
+      fullDate
+    )}/${encodeURIComponent(menu)}/${type}-${Date.now()}`;
+    await set(ref(db, dbPath), newHistory);
+
+    console.log("✅ History tersimpan:", newHistory);
+  } catch (err) {
+    console.error("❌ Gagal simpan history:", err);
+  }
+}
+
+// =====================================================
+// 📋 RENDER HISTORY (Admin Only, terbaru di atas)
 // =====================================================
 function renderHistory() {
+  if (currentUserRole !== "admin") return;
+
   const tableBody = document.querySelector("#historyTable tbody");
-  if (!tableBody || currentUserRole !== "admin") return; // Hanya render jika admin
+  if (!tableBody) return;
 
-  histories = JSON.parse(localStorage.getItem("histories") || "[]");
+  let histories = JSON.parse(localStorage.getItem("histories") || "[]");
 
-  tableBody.innerHTML = "";
+  // Tampilkan terbaru di atas
+  histories = histories.sort(
+    (a, b) => new Date(b.date + " " + b.time) - new Date(a.date + " " + a.time)
+  );
 
-  const filteredHistories = histories;
-
-  tableBody.innerHTML = filteredHistories
+  tableBody.innerHTML = histories
     .map(
       (h) => `
-      <tr>
-        <td>${h.date}</td>
-        <td>${h.menu}</td>
-        <td style="color: ${
-        h.type === "Keluar" ? "#d12a08" : "#4caf50"
-      }; font-weight: 600;">${h.qty}</td>
-        <td>${h.type}</td>
-        <td>${h.total}</td>
-        <td>${h.time}</td>
-        <td>${h.user || "N/A"}</td>
-      </tr>`
+      <tr>
+        <td>${h.date}</td>
+        <td>${h.menu}</td>
+        <td style="color: ${
+          h.type === "Keluar" || h.type === "Hapus" ? "#d12a08" : "#4caf50"
+        }; font-weight: 600;">${h.qty}</td>
+        <td>${h.type}</td>
+        <td>${h.total}</td>
+        <td>${h.time}</td>
+        <td>${h.user || "N/A"}</td>
+      </tr>`
     )
     .join("");
-
-  const tableHead = document.querySelector("#historyTable thead tr");
-  if (tableHead) {
-    tableHead.innerHTML = `
-          <th>Tgl Produksi</th>
-          <th>Menu</th>
-          <th>Jumlah</th>
-          <th>Jenis</th>
-          <th>Total Stok</th>
-          <th>Waktu Interaksi</th>
-          <th>User</th> `;
-  }
 }
 
 // =====================================================

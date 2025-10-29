@@ -4,21 +4,18 @@
 import { db, ref, set, get, child } from "./firebase.js";
 
 // =====================================================
-// 🚀 INIT & LOADING SCREEN LOGIC
+// 🚀 INIT & LOADING SCREEN
 // =====================================================
 const loadingOverlay = document.getElementById("loadingOverlay");
-
 function hideLoading() {
   if (loadingOverlay) {
     loadingOverlay.style.opacity = "0";
-    setTimeout(() => {
-      loadingOverlay.classList.add("hidden");
-    }, 500);
+    setTimeout(() => loadingOverlay.classList.add("hidden"), 500);
   }
 }
 
 // =====================================================
-// 🔒 AUTH LOGIC & PIN
+// 🔒 AUTH LOGIC
 // =====================================================
 const formTitle = document.getElementById("formTitle");
 const submitBtn = document.getElementById("submitBtn");
@@ -28,41 +25,35 @@ const passwordInput = document.getElementById("password");
 const regPinInput = document.getElementById("regPin");
 const userRoleSelect = document.getElementById("userRole");
 
-let isLoginMode = true; // Mode awal: Login
-let users = {}; // Variabel global untuk menyimpan data user dari Firebase
+let isLoginMode = true;
+let users = {}; // cache data user
 
-// Cek apakah user sudah login
-if (localStorage.getItem("currentUser")) {
+// Jika sudah login → langsung redirect
+const activeSession = localStorage.getItem("currentUser");
+if (activeSession) {
   if (loadingOverlay) {
     loadingOverlay.classList.remove("hidden");
     loadingOverlay.style.opacity = "1";
   }
-  setTimeout(() => {
-    window.location.href = "index.html";
-  }, 500);
+  setTimeout(() => (window.location.href = "index.html"), 500);
 }
 
-// FUNGSI: LOAD SEMUA USER DARI FIREBASE
+// =====================================================
+// 🧩 FUNGSI MUAT DATA USER DARI FIREBASE
+// =====================================================
 async function loadUsersFromFirebase() {
   try {
     const dbRef = ref(db);
-    const snapshot = await get(child(dbRef, `users`));
-    if (snapshot.exists()) {
-      users = snapshot.val();
-      console.log("✅ Data user berhasil dimuat dari Firebase.");
-    } else {
-      users = {};
-    }
-  } catch (error) {
-    console.error("❌ Gagal memuat user dari Firebase:", error);
+    const snapshot = await get(child(dbRef, "users"));
+    users = snapshot.exists() ? snapshot.val() : {};
+    console.log("✅ Data user dimuat dari Firebase.");
+  } catch (err) {
+    console.error("❌ Gagal memuat user dari Firebase:", err);
+    users = {};
   }
 }
 
-// =====================================================
-// 🚀 INIT DENGAN LOAD DATA
-// =====================================================
 window.addEventListener("load", async () => {
-  // Tunggu data user dimuat sebelum menyembunyikan loading screen
   await loadUsersFromFirebase();
   setTimeout(hideLoading, 500);
 });
@@ -82,19 +73,13 @@ if (switchForm) {
 
     usernameInput.value = "";
     passwordInput.value = "";
-
-    if (isLoginMode) {
-      regPinInput.classList.add("hidden");
-      userRoleSelect.classList.add("hidden");
-    } else {
-      regPinInput.classList.remove("hidden");
-      userRoleSelect.classList.remove("hidden");
-    }
+    regPinInput.classList.toggle("hidden", isLoginMode);
+    userRoleSelect.classList.toggle("hidden", isLoginMode);
   });
 }
 
 // =====================================================
-// 🧠 LOGIN & REGISTER
+// 🚀 LOGIN & REGISTER
 // =====================================================
 if (submitBtn) {
   submitBtn.addEventListener("click", async () => {
@@ -104,85 +89,84 @@ if (submitBtn) {
     if (!username || !password) {
       alert("Isi semua field dulu ya!");
       return;
-    } // === LOGIN MODE ===
+    }
 
+    // =========================
+    // MODE LOGIN
+    // =========================
     if (isLoginMode) {
-      // Gunakan data 'users' global yang sudah dimuat dari Firebase
-      if (users[username] && users[username].password === password) {
-        localStorage.setItem("currentUser", username);
-        alert(
-          `👋 Selamat datang, ${username}! (Role: ${users[
-            username
-          ].role.toUpperCase()})`
-        );
-        if (loadingOverlay) {
-          loadingOverlay.classList.remove("hidden");
-          loadingOverlay.style.opacity = "1";
-        }
-        setTimeout(() => {
-          window.location.href = "index.html";
-        }, 500);
-      } else {
-        alert("❌ Username atau password salah!");
-      }
-      return;
-    } // === REGISTER MODE ===
+      await loadUsersFromFirebase(); // pastikan ambil data terbaru
+      const user = users[username];
 
-    const selectedRole = userRoleSelect.value;
-    const pinInput = regPinInput.value;
-    // 🔐 VALIDASI PIN REGISTRASI
-    const REGISTRATION_PIN = "DISELL123";
-    if (pinInput !== REGISTRATION_PIN) {
-      alert("❌ PIN Pendaftaran salah! Pendaftaran dibatalkan.");
+      if (!user) {
+        alert("❌ Username tidak ditemukan!");
+        return;
+      }
+
+      if (user.password !== password) {
+        alert("❌ Password salah!");
+        return;
+      }
+
+      // Simpan hanya data sesi
+      localStorage.setItem("currentUser", username);
+      localStorage.setItem("currentRole", user.role);
+
+      alert(
+        `👋 Selamat datang, ${username}! (Role: ${user.role.toUpperCase()})`
+      );
+      loadingOverlay.classList.remove("hidden");
+      loadingOverlay.style.opacity = "1";
+      setTimeout(() => (window.location.href = "index.html"), 500);
       return;
     }
 
-    // Validasi dasar
+    // =========================
+    // MODE REGISTER
+    // =========================
+    const REGISTRATION_PIN = "DISELL123";
+    const pinInput = regPinInput.value.trim();
+    const selectedRole = userRoleSelect.value;
+
+    if (pinInput !== REGISTRATION_PIN) {
+      alert("❌ PIN pendaftaran salah!");
+      return;
+    }
+
     if (users[username]) {
-      alert("Username sudah digunakan! Silakan Login.");
+      alert("Username sudah digunakan! Silakan login.");
       return;
     }
 
     if (password.length < 6) {
-      alert("Password minimal 6 karakter.");
+      alert("Password minimal 6 karakter!");
       return;
-    } // LOGIC: Role Admin hanya bisa dipilih jika belum ada Admin lain.
+    }
 
-    const isAdminExists = Object.values(users).some((u) => u.role === "admin");
-    let finalRole = selectedRole; // ⭐ DEKLARASI finalRole DI SINI
-    if (selectedRole === "admin" && isAdminExists) {
-      alert(
-        "⚠️ Role Admin sudah terdaftar! Akun ini akan didaftarkan sebagai User Biasa."
-      );
-      finalRole = "user";
-    } // Simpan ke Firebase
+    // 💥 Sekarang admin bisa lebih dari satu
+    const finalRole = selectedRole;
 
     try {
       await set(ref(db, "users/" + username), {
         password: password,
-        role: finalRole, // ⭐ MENGGUNAKAN finalRole
+        role: finalRole,
         createdAt: new Date().toISOString(),
-      }); // UPDATE VARIABEL GLOBAL setelah berhasil disimpan
+      });
 
-      users[username] = { password, role: finalRole };
-
-      alert(
-        `✅ Registrasi berhasil!\nRole: ${finalRole.toUpperCase()}\nData tersimpan di Firebase.`
-      ); // Balik ke mode login
-
+      alert(`✅ Registrasi berhasil!\nRole: ${finalRole.toUpperCase()}`);
       isLoginMode = true;
       formTitle.textContent = "Login";
       submitBtn.textContent = "Login";
       submitBtn.className = "primary-btn";
       switchForm.textContent = "Belum punya akun? Daftar";
+      regPinInput.classList.add("hidden");
+      userRoleSelect.classList.add("hidden");
       usernameInput.value = "";
       passwordInput.value = "";
       regPinInput.value = "";
-      regPinInput.classList.add("hidden");
-      userRoleSelect.classList.add("hidden");
-    } catch (error) {
-      console.error("❌ Gagal simpan ke Firebase:", error); // Blok ini tidak mengakses finalRole, jadi aman
-      alert("Terjadi kesalahan saat menyimpan ke Firebase.");
+    } catch (err) {
+      console.error("❌ Gagal simpan ke Firebase:", err);
+      alert("Terjadi kesalahan saat menyimpan data.");
     }
   });
 }

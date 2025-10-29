@@ -1,34 +1,37 @@
-import { db, ref, set, get, push, update, remove } from "./firebase.js";
+import { db, ref, set, get, child, remove } from "./firebase.js";
 
-// Fungsi bantu simpan ke lokal dan Firebase
-async function saveData(path, data) {
-  // Simpan ke localStorage
-  localStorage.setItem(path, JSON.stringify(data));
+// =====================================================
+// 🔄 Sinkronisasi Firebase + LocalStorage
+// =====================================================
 
+// Simpan data ke Firebase + LocalStorage
+async function saveData(key, data) {
   try {
-    // Simpan ke Firebase
-    await set(ref(db, path), data);
-    console.log("✅ Data tersimpan ke Firebase:", path);
-  } catch (error) {
-    console.warn("⚠️ Firebase offline, simpan lokal saja:", path);
+    localStorage.setItem(key, JSON.stringify(data)); // backup lokal
+    await set(ref(db, key), data); // simpan ke firebase
+    console.log(`✅ ${key} disimpan ke Firebase`);
+  } catch (err) {
+    console.error(`❌ Gagal menyimpan ${key}:`, err);
   }
 }
 
-// Ambil data (prioritas dari localStorage dulu)
-async function loadData(path) {
-  // Coba dari localStorage
-  const local = localStorage.getItem(path);
-  if (local) return JSON.parse(local);
+// Ambil data dari LocalStorage dulu, fallback ke Firebase
+async function loadData(key) {
+  try {
+    const local = localStorage.getItem(key);
+    if (local) return JSON.parse(local);
 
-  // Kalau kosong, ambil dari Firebase
-  const snapshot = await get(ref(db, path));
-  if (snapshot.exists()) {
-    const data = snapshot.val();
-    localStorage.setItem(path, JSON.stringify(data)); // backup lokal
-    return data;
+    const snapshot = await get(child(ref(db), key));
+    if (snapshot.exists()) {
+      const data = snapshot.val();
+      localStorage.setItem(key, JSON.stringify(data));
+      console.log(`☁️ ${key} dimuat dari Firebase`);
+      return data;
+    }
+  } catch (err) {
+    console.error(`❌ Gagal memuat ${key}:`, err);
   }
-
-  return null;
+  return [];
 }
 
 console.log("✅ app.js aktif dan Firebase tersambung", db);
@@ -132,8 +135,15 @@ const printUniqueBarcodeBtn = document.getElementById("printUniqueBarcodeBtn");
 // =====================================================
 // 📦 DATA PRODUKSI & HISTORI
 // =====================================================
-let productions = (await loadData("productions")) || [];
-let histories = (await loadData("histories")) || [];
+let productions = [];
+let histories = [];
+
+(async () => {
+  productions = await loadData("productions");
+  histories = await loadData("histories");
+  renderProducts();
+  renderHistory();
+})();
 
 // =====================================================
 // 🔒 IMPLEMENTASI BATASAN AKSES (ROLE-BASED)
@@ -189,7 +199,7 @@ function logHistory(data) {
     user: currentUsername || "N/A",
   });
 
-  saveData("histories", JSON.stringify(histories)); // Hanya Admin yang perlu me-render history karena tombolnya disembunyikan
+  saveData("histories", histories);
 
   if (currentUserRole === "admin") {
     renderHistory();
@@ -199,9 +209,12 @@ function logHistory(data) {
 // =====================================================
 // ➕ TAMBAH PRODUK (DIBLOKIR JIKA BUKAN ADMIN)
 // =====================================================
+
 if (form) {
-  form.addEventListener("submit", (e) => {
+  form.addEventListener("submit", async (e) => {
     e.preventDefault();
+
+    // Hanya admin yang boleh tambah stok
     if (currentUserRole !== "admin") {
       alert("❌ Anda tidak memiliki izin untuk menambah stok produksi.");
       form.classList.add("hidden");
@@ -218,29 +231,71 @@ if (form) {
     ).padStart(2, "0")}/${now.getFullYear()}`;
     const code = `${menu}-${today}`;
 
-    productions = JSON.parse(localStorage.getItem("productions") || "[]");
+    try {
+      // Ambil data produksi dari Firebase
+      const dbRef = ref(db);
+      const snapshot = await get(child(dbRef, "productions"));
+      let productions = snapshot.exists() ? snapshot.val() : [];
 
-    const existing = productions.find(
-      (p) => p.menu === menu && p.date === today
-    );
-    if (existing) existing.qty += qty;
-    else productions.push({ menu, qty, date: today, code });
+      // Kalau data masih berbentuk object (bukan array)
+      if (!Array.isArray(productions)) {
+        productions = Object.values(productions);
+      }
 
-    const totalNew = existing ? existing.qty : qty;
-    logHistory({ date: today, menu, qty, type: "Produksi", total: totalNew });
+      // Cek apakah menu dengan tanggal hari ini sudah ada
+      const existing = productions.find(
+        (p) => p.menu === menu && p.date === today
+      );
 
-    saveData("productions", JSON.stringify(productions));
-    alert(`✅ ${menu} (${qty} pcs) ditambahkan!`);
-    qtyInput.value = "";
-    form.classList.add("hidden");
-    renderProducts();
+      if (existing) {
+        existing.qty += qty;
+      } else {
+        productions.push({ menu, qty, date: today, code });
+      }
+
+      // Hitung total terbaru
+      const totalNew = existing ? existing.qty : qty;
+
+      // Simpan ke Firebase & localStorage
+      await set(ref(db, "productions"), productions);
+      localStorage.setItem("productions", JSON.stringify(productions));
+
+      // Catat ke history
+      logHistory({ date: today, menu, qty, type: "Produksi", total: totalNew });
+
+      alert(`✅ ${menu} (${qty} pcs) berhasil ditambahkan!`);
+      qtyInput.value = "";
+      form.classList.add("hidden");
+      renderProducts();
+    } catch (err) {
+      console.error("❌ Gagal menambah stok:", err);
+      alert("❌ Gagal menambah stok. Periksa koneksi atau Firebase config.");
+    }
   });
 }
 
 // =====================================================
 // 🧾 RENDER PRODUK (User Biasa: Hanya lihat barcode dan nama)
 // =====================================================
-function renderProducts() {
+
+async function renderProducts() {
+  try {
+    // Ambil data dari Firebase
+    const snapshot = await get(ref(db, "productions"));
+    let productions = snapshot.exists() ? snapshot.val() : [];
+
+    // Kalau bentuknya object, ubah ke array
+    if (!Array.isArray(productions)) {
+      productions = Object.values(productions);
+    }
+
+    // Simpan ke localStorage biar tetap bisa offline
+    localStorage.setItem("productions", JSON.stringify(productions));
+  } catch (err) {
+    console.warn("⚠️ Gagal ambil data dari Firebase, pakai localStorage:", err);
+  }
+
+  // Ambil data dari localStorage sebagai fallback
   const raw = localStorage.getItem("productions");
   productions = raw ? JSON.parse(raw) : [];
 
@@ -249,10 +304,11 @@ function renderProducts() {
   );
   if (valid.length !== productions.length) {
     productions = valid;
-    saveData("productions", JSON.stringify(productions));
+    localStorage.setItem("productions", JSON.stringify(productions));
   }
 
-  productList.innerHTML = ""; // Hapus class product-grid yang lama dan ganti ke list-container
+  // Ubah tampilan list
+  productList.innerHTML = "";
   productList.classList.remove("product-grid");
   productList.classList.add("product-list-container");
 
@@ -261,46 +317,39 @@ function renderProducts() {
     return;
   }
 
+  // Kelompokkan berdasarkan nama menu
   const grouped = {};
   productions.forEach((p) => {
     if (!grouped[p.menu]) grouped[p.menu] = [];
     grouped[p.menu].push(p);
   });
 
+  // Render setiap menu
   Object.keys(grouped).forEach((menu) => {
-    // Hitung total stok untuk tampilan ringkas
     const totalQty = grouped[menu].reduce((sum, p) => sum + p.qty, 0);
 
-    const div = document.createElement("div"); // Gunakan product-item untuk kontainer luar
+    const div = document.createElement("div");
     div.classList.add("product-item");
     div.innerHTML = `
-        <div class="product-card" data-menu="${menu}">
-            <div class="product-img ${menu}"></div>
-            <div class="card-content">
-                <h3>${menu}</h3>
-                <p>Total Stok: <strong style="color:var(--accent);">${totalQty}</strong> pcs</p>
-            </div>
-            <span class="card-arrow">▶</span>
-        </div>
-        <div class="product-details-wrapper">
-                                    <div class="product-details" id="details-${menu}">
-                            </div>
-        </div>
-    `;
-    productList.appendChild(div); // !!! BARU: Event listener dipasang untuk tombol card (memicu slide-down)
+      <div class="product-card" data-menu="${menu}">
+        <div class="product-img ${menu}"></div>
+        <div class="card-content">
+          <h3>${menu}</h3>
+          <p>Total Stok: <strong style="color:var(--accent);">${totalQty}</strong> pcs</p>
+        </div>
+        <span class="card-arrow">▶</span>
+      </div>
+      <div class="product-details-wrapper">
+        <div class="product-details" id="details-${menu}"></div>
+      </div>
+    `;
+
+    productList.appendChild(div);
 
     div.querySelector(".product-card").addEventListener("click", (e) => {
-      // Mencegah klik saat tombol delete diklik
       if (e.target.closest(".date-row")?.querySelector(".delete-btn")) return;
       toggleTanggal(menu);
     });
-  }); // Hapus Event listener lama (Print/Expand) karena sudah diganti dengan logika di atas
-
-  document.querySelectorAll(".print-btn").forEach((btn) => {
-    /* Logic dihapus */
-  });
-  document.querySelectorAll(".expand-btn").forEach((btn) => {
-    /* Logic dihapus */
   });
 }
 
@@ -424,7 +473,8 @@ function deleteProduct(menu, date) {
   productions = productions.filter(
     (p) => !(p.menu === menu && p.date === date)
   );
-  saveData("productions", JSON.stringify(productions));
+  saveData("productions", productions);
+
   if (itemToDelete) {
     logHistory({
       date: date,
@@ -662,30 +712,48 @@ async function handleScan(decodedText) {
 // =====================================================
 // 🔁 UPDATE STOK + HISTORY
 // =====================================================
-function updateStock(item, type, jumlah) {
-  // Hanya Admin dan User yang boleh melakukan update ini
-  if (!["admin", "user"].includes(currentUserRole)) {
-    return alert("❌ Anda tidak memiliki izin untuk memodifikasi stok.");
+// =====================================================
+// 🔁 UPDATE STOK + HISTORY (Sinkron Firebase)
+// =====================================================
+async function updateStock(item, type, jumlah) {
+  try {
+    // Cek role
+    if (!["admin", "user"].includes(currentUserRole)) {
+      return alert("❌ Anda tidak memiliki izin untuk memodifikasi stok.");
+    }
+
+    // Ambil data lokal
+    productions = JSON.parse(localStorage.getItem("productions") || "[]");
+
+    // Update item di array lokal
+    const idx = productions.findIndex(
+      (p) => p.menu === item.menu && p.date === item.date
+    );
+    if (idx >= 0) productions[idx] = item;
+
+    // Simpan ke localStorage (offline cache)
+    saveData("productions", productions);
+
+    // 🧠 Simpan ke Firebase juga (sinkron)
+    const dbPath = `productions/${encodeURIComponent(
+      item.menu
+    )}/${encodeURIComponent(item.date)}`;
+    await set(ref(db, dbPath), item);
+
+    // Catat di log history (Firebase + local)
+    await logHistory({
+      date: item.date,
+      menu: item.menu,
+      qty: jumlah,
+      type,
+      total: item.qty,
+    });
+
+    renderProducts();
+  } catch (err) {
+    console.error("❌ Gagal update stok ke Firebase:", err);
+    alert("⚠️ Perubahan stok disimpan lokal. Sinkronisasi Firebase gagal.");
   }
-
-  productions = JSON.parse(localStorage.getItem("productions") || "[]");
-
-  const idx = productions.findIndex(
-    (p) => p.menu === item.menu && p.date === item.date
-  );
-  if (idx >= 0) productions[idx] = item;
-
-  saveData("productions", JSON.stringify(productions));
-
-  logHistory({
-    date: item.date,
-    menu: item.menu,
-    qty: jumlah,
-    type,
-    total: item.qty,
-  });
-
-  renderProducts();
 }
 
 // =====================================================
@@ -986,11 +1054,15 @@ if (uploadJsonInput) {
         if (
           confirm("Yakin ingin menimpa data saat ini dengan data dari file?")
         ) {
-          if (data.users) saveData("users", JSON.stringify(data.users));
+          if (data.users)
+            localStorage.setItem("users", JSON.stringify(data.users));
           if (data.productions)
-            saveData("productions", JSON.stringify(data.productions));
+            localStorage.setItem(
+              "productions",
+              JSON.stringify(data.productions)
+            );
           if (data.histories)
-            saveData("histories", JSON.stringify(data.histories));
+            localStorage.setItem("histories", JSON.stringify(data.histories));
           alert("✅ Data berhasil diimpor! Halaman akan dimuat ulang.");
           window.location.reload();
         }
@@ -1033,10 +1105,11 @@ async function loadFromFirebase() {
       const data = snapshot.val();
 
       // overwrite localStorage hanya kalau ada data di Firebase
-      if (data.users) saveData("users", JSON.stringify(data.users));
+      if (data.users) localStorage.setItem("users", JSON.stringify(data.users));
       if (data.productions)
-        saveData("productions", JSON.stringify(data.productions));
-      if (data.histories) saveData("histories", JSON.stringify(data.histories));
+        localStorage.setItem("productions", JSON.stringify(data.productions));
+      if (data.histories)
+        localStorage.setItem("histories", JSON.stringify(data.histories));
 
       console.log("✅ Data dimuat dari Firebase untuk", currentUser);
     } else {

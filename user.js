@@ -29,7 +29,7 @@ const regPinInput = document.getElementById("regPin");
 const userRoleSelect = document.getElementById("userRole");
 
 let isLoginMode = true; // Mode awal: Login
-let users = {}; // ⭐ BARU: Variabel global untuk menyimpan data user dari Firebase
+let users = {}; // Variabel global untuk menyimpan data user dari Firebase
 
 // Cek apakah user sudah login
 if (localStorage.getItem("currentUser")) {
@@ -42,7 +42,7 @@ if (localStorage.getItem("currentUser")) {
   }, 500);
 }
 
-// ⭐ FUNGSI BARU: LOAD SEMUA USER DARI FIREBASE
+// FUNGSI: LOAD SEMUA USER DARI FIREBASE
 async function loadUsersFromFirebase() {
   try {
     const dbRef = ref(db);
@@ -51,10 +51,10 @@ async function loadUsersFromFirebase() {
       users = snapshot.val();
       console.log("✅ Data user berhasil dimuat dari Firebase.");
     } else {
-      users = {}; // Kosong jika belum ada user
+      users = {};
     }
   } catch (error) {
-    console.error("❌ Gagal memuat user dari Firebase:", error); // Biarkan users kosong dan lanjutkan, login/register akan gagal jika koneksi putus
+    console.error("❌ Gagal memuat user dari Firebase:", error);
   }
 }
 
@@ -64,11 +64,11 @@ async function loadUsersFromFirebase() {
 window.addEventListener("load", async () => {
   // Tunggu data user dimuat sebelum menyembunyikan loading screen
   await loadUsersFromFirebase();
-  setTimeout(hideLoading, 500); // Persingkat loading setelah data dimuat
+  setTimeout(hideLoading, 500);
 });
 
 // =====================================================
-// 🔄 GANTI MODE LOGIN / REGISTER (TETAP)
+// 🔄 GANTI MODE LOGIN / REGISTER
 // =====================================================
 if (switchForm) {
   switchForm.addEventListener("click", () => {
@@ -94,7 +94,7 @@ if (switchForm) {
 }
 
 // =====================================================
-// 🧠 LOGIN & REGISTER (MODIFIKASI FIREBASE)
+// 🧠 LOGIN & REGISTER
 // =====================================================
 if (submitBtn) {
   submitBtn.addEventListener("click", async () => {
@@ -104,10 +104,10 @@ if (submitBtn) {
     if (!username || !password) {
       alert("Isi semua field dulu ya!");
       return;
-    } // ❌ HAPUS: const users = JSON.parse(localStorage.getItem("users") || "{}"); // ⭐ GUNAKAN VARIABEL GLOBAL 'users' YANG SUDAH DI-LOAD // === LOGIN MODE (MODIFIKASI FIREBASE) ===
+    } // === LOGIN MODE ===
 
     if (isLoginMode) {
-      // ⭐ Gunakan data 'users' global yang sudah dimuat dari Firebase
+      // Gunakan data 'users' global yang sudah dimuat dari Firebase
       if (users[username] && users[username].password === password) {
         localStorage.setItem("currentUser", username);
         alert(
@@ -126,11 +126,18 @@ if (submitBtn) {
         alert("❌ Username atau password salah!");
       }
       return;
-    } // === REGISTER MODE (MODIFIKASI FIREBASE) ===
+    } // === REGISTER MODE ===
 
-    let selectedRole = userRoleSelect.value;
+    const selectedRole = userRoleSelect.value;
     const pinInput = regPinInput.value;
+    // 🔐 VALIDASI PIN REGISTRASI
+    const REGISTRATION_PIN = "DISELL123";
+    if (pinInput !== REGISTRATION_PIN) {
+      alert("❌ PIN Pendaftaran salah! Pendaftaran dibatalkan.");
+      return;
+    }
 
+    // Validasi dasar
     if (users[username]) {
       alert("Username sudah digunakan! Silakan Login.");
       return;
@@ -139,24 +146,24 @@ if (submitBtn) {
     if (password.length < 6) {
       alert("Password minimal 6 karakter.");
       return;
-    }
+    } // LOGIC: Role Admin hanya bisa dipilih jika belum ada Admin lain.
 
-    const REGISTRATION_PIN = "DISELL123";
-    if (pinInput !== REGISTRATION_PIN) {
-      alert("❌ PIN salah! Pendaftaran dibatalkan.");
-      return;
-    }
-    // ❌ HAPUS: users[username] = { password, role: selectedRole }; // ❌ HAPUS: localStorage.setItem("users", JSON.stringify(users)); // Simpan ke Firebase
+    const isAdminExists = Object.values(users).some((u) => u.role === "admin");
+    let finalRole = selectedRole; // ⭐ DEKLARASI finalRole DI SINI
+    if (selectedRole === "admin" && isAdminExists) {
+      alert(
+        "⚠️ Role Admin sudah terdaftar! Akun ini akan didaftarkan sebagai User Biasa."
+      );
+      finalRole = "user";
+    } // Simpan ke Firebase
 
     try {
       await set(ref(db, "users/" + username), {
-        // Hapus username jika kunci (path) sudah username
         password: password,
-        role: finalRole,
+        role: finalRole, // ⭐ MENGGUNAKAN finalRole
         createdAt: new Date().toISOString(),
-      });
+      }); // UPDATE VARIABEL GLOBAL setelah berhasil disimpan
 
-      // ⭐ UPDATE VARIABEL GLOBAL setelah berhasil disimpan
       users[username] = { password, role: finalRole };
 
       alert(
@@ -174,7 +181,7 @@ if (submitBtn) {
       regPinInput.classList.add("hidden");
       userRoleSelect.classList.add("hidden");
     } catch (error) {
-      console.error("❌ Gagal simpan ke Firebase:", error);
+      console.error("❌ Gagal simpan ke Firebase:", error); // Blok ini tidak mengakses finalRole, jadi aman
       alert("Terjadi kesalahan saat menyimpan ke Firebase.");
     }
   });

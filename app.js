@@ -1,20 +1,48 @@
 import { db, ref, set, get, child, remove } from "./firebase.js";
-
-// ⭐ HAPUS FUNGSI saveData DAN loadData. KITA AKAN GUNAKAN SET DAN GET LANGSUNG.
+// =====================================================
+// 📦 DATA PRODUKSI & HISTORI
+// =====================================================
+let productions = [];
+let histories = [];
 
 console.log("✅ app.js aktif dan Firebase tersambung", db);
 
-// app.js
+// =====================================================
+// 🔄 Sinkronisasi Firebase + LocalStorage
+// =====================================================
+async function saveData(key, data) {
+  try {
+    localStorage.setItem(key, JSON.stringify(data)); // backup lokal
+    await set(ref(db, key), data); // simpan ke firebase
+    console.log(`✅ ${key} disimpan ke Firebase`);
+  } catch (err) {
+    console.error(`❌ Gagal menyimpan ${key}:`, err);
+  }
+}
+
+async function loadData(key) {
+  try {
+    const local = localStorage.getItem(key);
+    if (local) return JSON.parse(local);
+
+    const snapshot = await get(child(ref(db), key));
+    if (snapshot.exists()) {
+      const data = snapshot.val();
+      localStorage.setItem(key, JSON.stringify(data));
+      console.log(`☁️ ${key} dimuat dari Firebase`);
+      return data;
+    }
+  } catch (err) {
+    console.error(`❌ Gagal memuat ${key}:`, err);
+  }
+  return [];
+}
 
 // =====================================================
-// 📦 VARIABEL GLOBAL (Diperbarui)
+// 🔒 CEK LOGIN & AMBIL USER DATA
 // =====================================================
-let allUsersFromFirebase = {}; // Menyimpan data semua user
-let currentUser = null; // Menyimpan username
-let currentUserRole = null; // Menyimpan role
-
 // =====================================================
-// 🔒 CEK LOGIN & AMBIL USER DATA (MODIFIKASI MURNI FIREBASE)
+// 🔒 CEK LOGIN & AMBIL USER DATA (AMAN TANPA LOOP)
 // =====================================================
 const userDisplay = document.getElementById("userDisplay");
 const userDisplayBtn = document.getElementById("userDisplayBtn");
@@ -22,86 +50,89 @@ const logoutPopup = document.getElementById("logoutPopup");
 const confirmLogoutBtn = document.getElementById("confirmLogout");
 const cancelLogoutBtn = document.getElementById("cancelLogout");
 
-// Ambil username dari localStorage (Ini tetap kita gunakan sbg token login)
-const currentUsername = localStorage.getItem("currentUser");
-currentUser = currentUsername; // Set variabel global
+let currentUsername = localStorage.getItem("currentUser");
+let allUsers = JSON.parse(localStorage.getItem("users") || "{}");
+let currentUserData = allUsers[currentUsername];
+let currentUserRole = currentUserData ? currentUserData.role : null;
 
-// ⭐ FUNGSI BARU: Load data user, products, dan history
-async function initializeUserData() {
+// ✅ Fungsi aman untuk memuat data user (Firebase fallback)
+async function ensureUserData() {
   if (!currentUsername) {
-    // Jika tidak ada user di localStorage, redirect ke halaman login
+    // Belum login → ke halaman login
     window.location.href = "user.html";
-    return false;
+    return;
   }
 
-  try {
-    // 1. Ambil data user dari Firebase
-    const userSnapshot = await get(ref(db, "users"));
-    if (userSnapshot.exists()) {
-      allUsersFromFirebase = userSnapshot.val();
-      const currentUserData = allUsersFromFirebase[currentUsername];
+  // Kalau data user sudah ada di localStorage, langsung lanjut
+  if (currentUserData) {
+    console.log("📦 Data user diambil dari LocalStorage");
+    applyUserDisplay(currentUsername, currentUserData.role);
+    return;
+  }
 
-      if (currentUserData) {
-        currentUserRole = currentUserData.role;
-      }
+  // Kalau belum ada → ambil dari Firebase
+  try {
+    console.log("☁️ Memuat data user dari Firebase...");
+    const snapshot = await get(child(ref(db), "users/" + currentUsername));
+    if (snapshot.exists()) {
+      const userData = snapshot.val();
+      allUsers[currentUsername] = userData;
+      localStorage.setItem("users", JSON.stringify(allUsers));
+      applyUserDisplay(currentUsername, userData.role);
+    } else {
+      console.warn("❌ User tidak ditemukan di Firebase");
+      localStorage.removeItem("currentUser");
+      window.location.href = "user.html";
     }
-  } catch (error) {
-    console.error("Gagal memuat data user dari Firebase:", error);
-  }
-
-  // 2. Pengecekan Akhir: Validasi Role dari Firebase
-  if (!currentUserRole) {
-    // ⭐ PERBAIKAN PENTING UNTUK MENGHENTIKAN LOOPING REDIRECT
-    console.warn(
-      "User terdaftar lokal, tapi data role tidak ditemukan di Firebase. Redirect ke login."
-    );
-    localStorage.removeItem("currentUser"); // Hapus token
-    window.location.href = "user.html";
-    return false;
-  }
-
-  // 3. Tampilkan nama user dan role di header
-  if (userDisplay) {
-    userDisplay.textContent = `${currentUsername} (${currentUserRole.toUpperCase()})`;
-  }
-
-  // 4. Muat data master (Produksi & History)
-  await loadDataInitial();
-
-  // 5. Terapkan batasan akses (Panggilan fungsi lama Anda)
-  applyAccessControl(); // Panggil fungsi ini setelah currentUserRole terisi
-
-  return true;
-}
-
-// ⭐ BARU: Fungsi untuk memuat data master (dipanggil dari initializeUserData)
-async function loadDataInitial() {
-  try {
-    const [prodSnap, histSnap] = await Promise.all([
-      get(ref(db, "productions")),
-      get(ref(db, "histories")),
-    ]);
-
-    // Ubah dari object ke array (asumsi penyimpanan Firebase adalah objek)
-    productions = prodSnap.exists() ? Object.values(prodSnap.val()) : [];
-    histories = histSnap.exists() ? Object.values(histSnap.val()) : [];
-
-    // Simpan ke LocalStorage sebagai OFFLINE CACHE saja
-    localStorage.setItem("productions", JSON.stringify(productions));
-    localStorage.setItem("histories", JSON.stringify(histories));
   } catch (err) {
-    console.error("Gagal memuat data awal dari Firebase:", err);
-    // Fallback: Gunakan cache localStorage jika Firebase gagal
-    productions = JSON.parse(localStorage.getItem("productions") || "[]");
-    histories = JSON.parse(localStorage.getItem("histories") || "[]");
+    console.error("❌ Gagal memuat user dari Firebase:", err);
+    alert("Terjadi kesalahan koneksi. Silakan login ulang.");
+    localStorage.removeItem("currentUser");
+    window.location.href = "user.html";
   }
-  renderProducts();
-  renderHistory();
 }
 
-// Panggil fungsi inisialisasi
-document.addEventListener("DOMContentLoaded", initializeUserData);
+// ✅ Fungsi bantu untuk menampilkan nama user
+function applyUserDisplay(username, role) {
+  if (userDisplay) {
+    userDisplay.textContent = `${username} (${role.toUpperCase()})`;
+  }
+  currentUserRole = role;
+  // Jalankan kontrol akses dan render konten
+  if (typeof applyAccessControl === "function") applyAccessControl();
+  if (typeof renderProducts === "function") renderProducts();
+  if (typeof renderHistory === "function") renderHistory();
+}
+// =====================================================
+// 🔒 IMPLEMENTASI BATASAN AKSES (ROLE-BASED)
+// =====================================================
+function applyAccessControl() {
+  // Pastikan role sudah terdeteksi
+  if (!currentUserRole) {
+    console.warn("⚠️ applyAccessControl() dipanggil sebelum user siap.");
+    return;
+  }
 
+  // ✅ Definisikan dulu elemen yang dibatasi
+  const adminOnlyElements = [
+    document.getElementById("addForm"), // Form Input Produksi
+    document.getElementById("toggleFormBtn"), // Tombol Tampilkan Form Input
+    document.getElementById("historyBtnContainer"), // Tombol Riwayat
+    document.getElementById("dataManagementContainer"), // Import/Export/Reset
+  ];
+
+  // Kalau role user biasa, sembunyikan elemen admin-only
+  if (currentUserRole === "user") {
+    adminOnlyElements.forEach((el) => el && el.classList.add("hidden"));
+    console.log("🙈 Mode user aktif: fitur admin disembunyikan");
+  }
+
+  // Kalau admin, pastikan semuanya tampil
+  if (currentUserRole === "admin") {
+    adminOnlyElements.forEach((el) => el && el.classList.remove("hidden"));
+    console.log("🧑‍💼 Mode admin aktif: semua fitur terlihat");
+  }
+}
 // Event listener untuk tombol user (tampilkan popup logout)
 if (userDisplayBtn) {
   userDisplayBtn.addEventListener("click", () => {
@@ -125,6 +156,9 @@ if (cancelLogoutBtn) {
     logoutPopup.classList.add("hidden");
   });
 }
+
+// Jalankan saat halaman siap
+ensureUserData();
 
 // =====================================================
 // 🧩 ELEMENT UTAMA
@@ -173,8 +207,6 @@ const printUniqueBarcodeBtn = document.getElementById("printUniqueBarcodeBtn");
 // =====================================================
 // 📦 DATA PRODUKSI & HISTORI
 // =====================================================
-let productions = [];
-let histories = [];
 
 (async () => {
   productions = await loadData("productions");
@@ -186,25 +218,16 @@ let histories = [];
 // =====================================================
 // 🔒 IMPLEMENTASI BATASAN AKSES (ROLE-BASED)
 // =====================================================
-function applyAccessControl() {
-  // ID element yang HANYA BOLEH DIAKSES ADMIN
-  const adminOnlyElements = [
-    document.getElementById("addForm"), // Form Input Produksi
-    document.getElementById("toggleFormBtn"), // Tombol Tampilkan Form Input
-    document.getElementById("historyBtnContainer"), // Kontainer Tombol Riwayat
-    document.getElementById("dataManagementContainer"), // Kontainer Import/Export/Reset
-  ];
 
-  if (currentUserRole !== "admin") {
-    adminOnlyElements.forEach((el) => {
-      if (el) {
-        el.classList.add("hidden");
-      }
-    }); // Pastikan tombol SCAN selalu terlihat untuk semua user
-
-    if (startScanBtn) {
-      startScanBtn.classList.remove("hidden");
+if (currentUserRole !== "admin") {
+  adminOnlyElements.forEach((el) => {
+    if (el) {
+      el.classList.add("hidden");
     }
+  }); // Pastikan tombol SCAN selalu terlihat untuk semua user
+
+  if (startScanBtn) {
+    startScanBtn.classList.remove("hidden");
   }
 }
 
